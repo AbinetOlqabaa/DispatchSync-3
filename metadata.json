@@ -1,0 +1,6 @@
+{
+  "name": "DispatchSync",
+  "description": "Secure business dispatch management, delivery verification, recipient receipt reconciliation, loss tracking, and tamper-resistant audit logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
