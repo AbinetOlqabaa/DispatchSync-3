@@ -21,15 +21,19 @@ import {
   ShieldCheck,
   QrCode,
   Download,
+  Camera,
+  PenTool,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { useTranslation } from '../../context/LanguageContext.js';
-import { DiscrepancyCase, DiscrepancyType, Dispatch, ItemCondition } from '../../types/dispatch.js';
+import { CargoEvidence, DiscrepancyCase, DiscrepancyType, Dispatch, ItemCondition } from '../../types/dispatch.js';
 import { api } from '../../services/api.js';
 import { StatusBadge } from '../../components/common/StatusBadge.js';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.js';
 import { exportDispatchManifestPdf } from '../../utils/pdfExport.js';
 import { QrScannerModal } from '../../components/dispatches/QrScannerModal.js';
+import { SignaturePad } from '../../components/dispatches/SignaturePad.js';
+import { DamagePhotoUpload } from '../../components/dispatches/DamagePhotoUpload.js';
 
 interface DispatchDetailPageProps {
   dispatchId: string;
@@ -58,11 +62,14 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
       condition: ItemCondition;
       discrepancyType: DiscrepancyType;
       notes: string;
+      evidence?: CargoEvidence[];
     }>
   >([]);
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('Receiving Supervisor');
   const [signoffComments, setSignoffComments] = useState('');
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [lineEvidence, setLineEvidence] = useState<Record<number, CargoEvidence[]>>({});
 
   // Discrepancy response state
   const [respondingCaseId, setRespondingCaseId] = useState<string | null>(null);
@@ -173,17 +180,23 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
     setIsSubmitting(true);
 
     try {
+      const payloadLines = lineReceipts.map((l, idx) => ({
+        ...l,
+        evidence: lineEvidence[idx] || l.evidence || [],
+      }));
+
       const updated = await api.recordReceipt(dispatch.id, {
-        lines: lineReceipts,
+        lines: payloadLines,
         signoff: {
           signerName: signerName.trim() || 'Verified Receiver',
           signerRole: signerRole.trim() || 'Receiving Staff',
           comments: signoffComments.trim(),
+          signatureSvgOrBase64: signatureDataUrl || undefined,
         },
       });
       setDispatch(updated);
       setIsReconciling(false);
-      setActionSuccess('Delivery receipt verified and reconciliation recorded successfully.');
+      setActionSuccess('Delivery receipt verified and reconciliation recorded with digital signature & evidence.');
     } catch (err: any) {
       setActionError(err.message || 'Failed to record reconciliation.');
     } finally {
@@ -520,6 +533,27 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                   </div>
                 )}
 
+                {/* Evidence Attachments */}
+                {c.evidence && c.evidence.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Tamper-Evident Cargo Evidence ({c.evidence.length} photos)</span>
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {c.evidence.map((ev) => (
+                        <div key={ev.id} className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+                          <img src={ev.dataUrl} alt={ev.fileName} className="h-20 w-full object-cover" />
+                          <div className="p-1 text-[9px] text-slate-400 truncate">
+                            <span className="text-slate-200 font-semibold">{ev.fileName}</span>
+                            <div className="font-mono text-[8px] text-emerald-400">SHA: {ev.sha256Hash?.substring(0, 10)}...</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Sender response action */}
                 {canRespondDiscrepancy && c.status === 'OPEN' && respondingCaseId !== c.id && (
                   <div className="pt-1 flex gap-2">
@@ -733,6 +767,27 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
               <span className="text-slate-500">Receiver Comments:</span>
               <div className="text-slate-300">{dispatch.receiverSignoff.comments || 'No remarks provided.'}</div>
             </div>
+
+            {dispatch.receiverSignoff.signatureSvgOrBase64 && (
+              <div className="sm:col-span-3 pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block">
+                    Verified Digital Signature
+                  </span>
+                  <div className="mt-1 bg-slate-950 p-2 rounded-xl border border-slate-800 inline-block">
+                    <img
+                      src={dispatch.receiverSignoff.signatureSvgOrBase64}
+                      alt="Receiver Signature"
+                      className="h-16 w-auto max-w-xs object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1.5 rounded-xl">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>Legally Enforceable Glass Sign-Off Locked</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -833,6 +888,15 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                       />
                     </div>
                   </div>
+
+                  {/* Damage & Shortage Photo Evidence Attachment */}
+                  <div className="pt-1">
+                    <DamagePhotoUpload
+                      evidence={lineEvidence[idx] || []}
+                      onChange={(ev) => setLineEvidence({ ...lineEvidence, [idx]: ev })}
+                      maxFiles={4}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -871,6 +935,14 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                 onChange={(e) => setSignoffComments(e.target.value)}
                 placeholder="Optional carrier remarks, seals intact, driver signature notes..."
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
+              />
+            </div>
+
+            {/* Interactive Canvas Signature Pad */}
+            <div className="pt-2">
+              <SignaturePad
+                onSignatureChange={setSignatureDataUrl}
+                signerName={signerName}
               />
             </div>
 

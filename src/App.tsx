@@ -26,8 +26,10 @@ import { SystemStatusPage } from './pages/system/SystemStatusPage.js';
 import { RecommendationsView } from './components/recommendations/RecommendationsView.js';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer.js';
 
+import { LoadingSpinner } from './components/common/LoadingSpinner.js';
+
 function MainApp() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Navigation State
   const [currentTab, setCurrentTab] = useState<string>('dispatches');
@@ -55,6 +57,14 @@ function MainApp() {
       setCurrentTab('dashboard');
     }
   }, [user]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <LoadingSpinner text="Initializing DispatchBridge..." />
+      </div>
+    );
+  }
 
   // If public token is active, show the partner delivery manifest
   if (publicShareToken) {

@@ -56,8 +56,14 @@ export const DispatchListPage: React.FC<DispatchListPageProps> = ({
   const [exportSuccessMsg, setExportSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDispatches();
-    loadPartners();
+    if (user) {
+      loadDispatches();
+      loadPartners();
+    } else {
+      setDispatches([]);
+      setPartners([]);
+      setLoading(false);
+    }
   }, [statusFilter, user]);
 
   const loadPartners = async () => {

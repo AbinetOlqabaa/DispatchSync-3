@@ -93,6 +93,18 @@ export type DiscrepancyType =
   | 'COUNT_MISMATCH'
   | 'OTHER';
 
+export interface CargoEvidence {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  sha256Hash: string;
+  dataUrl: string; // Base64 data URL
+  uploadedAt: string;
+  uploadedBy?: string;
+  notes?: string;
+}
+
 export interface DispatchLine {
   id: string;
   sku: string;
@@ -105,6 +117,7 @@ export interface DispatchLine {
   discrepancyType?: DiscrepancyType;
   lossQty?: number;
   notes?: string;
+  evidence?: CargoEvidence[];
   ordinal: number;
 }
 
@@ -154,6 +167,7 @@ export interface DiscrepancyCase {
   resolvedByUserId?: string;
   resolvedByName?: string;
   resolvedAt?: string;
+  evidence?: CargoEvidence[];
 }
 
 export interface ReceiverSignoff {
@@ -161,6 +175,7 @@ export interface ReceiverSignoff {
   signerRole: string;
   signedAt: string;
   comments?: string;
+  signatureSvgOrBase64?: string; // Captured vector/base64 signature
 }
 
 export interface Dispatch {
@@ -207,7 +222,7 @@ export interface Dispatch {
   updatedAt: string;
 }
 
-export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP';
+export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP' | 'WEBHOOK';
 export type NotificationStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED' | 'READ';
 
 export interface NotificationItem {
@@ -232,6 +247,12 @@ export interface NotificationItem {
   isRead: boolean;
   createdAt: string;
   readAt?: string;
+  // Outbound notification queue & delivery tracking
+  providerDeliveryStatus?: 'QUEUED' | 'SENDING' | 'DELIVERED' | 'FAILED' | 'READ';
+  deliveryAttempts?: number;
+  lastAttemptAt?: string;
+  errorMessage?: string;
+  payloadPreview?: string;
 }
 
 export interface AuditLogEntry {
@@ -266,4 +287,45 @@ export interface SystemStatusInfo {
   totalNotifications: number;
   superAdminBootstrapAvailable: boolean;
   serverTime: string;
+}
+
+export interface StagingCheckItem {
+  id: string;
+  name: string;
+  status: 'PASS' | 'WARN' | 'FAIL';
+  details: string;
+  remediation?: string;
+}
+
+export interface StagingReadinessReport {
+  overallStatus: 'READY_FOR_STAGING' | 'NEEDS_CONFIGURATION' | 'IN_DEVELOPMENT';
+  evaluatedAt: string;
+  categories: {
+    buildAndCodeQuality: {
+      name: string;
+      status: 'PASS' | 'WARN' | 'FAIL';
+      checks: StagingCheckItem[];
+    };
+    identityAndSecurity: {
+      name: string;
+      status: 'PASS' | 'WARN' | 'FAIL';
+      checks: StagingCheckItem[];
+    };
+    dataAndOperations: {
+      name: string;
+      status: 'PASS' | 'WARN' | 'FAIL';
+      checks: StagingCheckItem[];
+    };
+    platformAndRelease: {
+      name: string;
+      status: 'PASS' | 'WARN' | 'FAIL';
+      checks: StagingCheckItem[];
+    };
+  };
+  metrics: {
+    totalChecks: number;
+    passed: number;
+    warnings: number;
+    failures: number;
+  };
 }

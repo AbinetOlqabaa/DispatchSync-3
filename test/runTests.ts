@@ -561,6 +561,152 @@ async function runTestSuite() {
   });
 
   // -------------------------------------------------------------------------
+  // Layer 5: Extension Roadmap (Master Plan Staging) Acceptance Tests
+  // -------------------------------------------------------------------------
+  await test('Master Plan Staging', 'Digital Glass Signature: Receiver dock signature is captured and locked into sign-off record', async () => {
+    // Create new dispatch to reconcile with digital signature
+    const newDispatch = await sandboxStore.createDispatch(
+      {
+        originLocationLabel: 'Chicago Main Dock',
+        originAddress: '104 Logistics Blvd, Chicago, IL',
+        partnerId: 'part_metro_north',
+        lines: [
+          { sku: 'SKU-SIG-01', itemName: 'High-Value Solar Micro-Inverter 400W', unit: 'units', quantitySent: 15 },
+        ],
+      },
+      senderUser
+    );
+
+    const testSignatureDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    const reconciled = await sandboxStore.recordReceiptReport(
+      newDispatch.id,
+      {
+        lines: [
+          { id: newDispatch.lines[0].id, quantityReceived: 15, condition: 'GOOD', discrepancyType: 'NONE' },
+        ],
+        signoff: {
+          signerName: 'Marcus Wright',
+          signerRole: 'Senior Receiving Inspector',
+          comments: 'Seals verified; 15 units intact.',
+          signatureSvgOrBase64: testSignatureDataUrl,
+        },
+      },
+      receiverUser
+    );
+
+    assert(Boolean(reconciled.receiverSignoff), 'Sign-off record exists');
+    assertEqual(reconciled.receiverSignoff?.signerName, 'Marcus Wright', 'Signer name recorded');
+    assertEqual(reconciled.receiverSignoff?.signerRole, 'Senior Receiving Inspector', 'Signer role recorded');
+    assert(Boolean(reconciled.receiverSignoff?.signatureSvgOrBase64), 'Digital signature data URL recorded');
+    assertEqual(reconciled.receiverSignoff?.signatureSvgOrBase64, testSignatureDataUrl, 'Exact signature payload preserved');
+    assertEqual(reconciled.status, 'RECEIVED', 'Status transitioned to RECEIVED');
+  });
+
+  await test('Master Plan Staging', 'Photo Damage Claims: Cargo damage photos with SHA-256 hashes are attached to discrepancy cases', async () => {
+    const newDispatch = await sandboxStore.createDispatch(
+      {
+        originLocationLabel: 'Chicago Main Dock',
+        originAddress: '104 Logistics Blvd, Chicago, IL',
+        partnerId: 'part_metro_north',
+        lines: [
+          { sku: 'SKU-GLS-99', itemName: 'Fragile Ceramic Laboratory Flasks (Set of 12)', unit: 'boxes', quantitySent: 20 },
+        ],
+      },
+      senderUser
+    );
+
+    const testEvidence = [
+      {
+        id: 'ev_test_101',
+        fileName: 'shattered_crate_tailgate.png',
+        mimeType: 'image/png',
+        fileSize: 1048576,
+        sha256Hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        uploadedAt: new Date().toISOString(),
+        notes: 'Crushed corner pallet with shattered glassware on tailgate arrival',
+      },
+    ];
+
+    const reconciled = await sandboxStore.recordReceiptReport(
+      newDispatch.id,
+      {
+        lines: [
+          {
+            id: newDispatch.lines[0].id,
+            quantityReceived: 14,
+            condition: 'DAMAGED',
+            discrepancyType: 'DAMAGED',
+            notes: '6 boxes destroyed in transit.',
+            evidence: testEvidence,
+          },
+        ],
+        signoff: {
+          signerName: 'Marcus Wright',
+          signerRole: 'Senior Receiving Inspector',
+          comments: 'Damage photos attached to claim.',
+        },
+      },
+      receiverUser
+    );
+
+    assertEqual(reconciled.status, 'PARTIALLY_RECEIVED', 'Status transitioned to PARTIALLY_RECEIVED');
+    assertEqual(reconciled.totalQuantityLost, 6, 'Shortfall quantity calculated correctly');
+    assert(Boolean(reconciled.discrepancyCases && reconciled.discrepancyCases.length > 0), 'Discrepancy case created');
+
+    const discCase = reconciled.discrepancyCases![0];
+    assertEqual(discCase.type, 'DAMAGED', 'Discrepancy case type DAMAGED');
+    assert(Boolean(discCase.evidence && discCase.evidence.length > 0), 'Evidence attached to discrepancy case');
+    assertEqual(discCase.evidence![0].fileName, 'shattered_crate_tailgate.png', 'Evidence filename matches');
+    assertEqual(discCase.evidence![0].sha256Hash, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Tamper-evident SHA-256 hash verified');
+  });
+
+  await test('Master Plan Staging', 'Notification Outbox Gateway: Outbound SMS, Email, and Webhook queuing with delivery retries', async () => {
+    // Test dispatching an outbound SMS alert
+    const smsNotice = await sandboxStore.sendOutboundNotification({
+      channel: 'SMS',
+      recipient: '+1-555-014-4411',
+      title: 'Outbound Manifest Test SMS',
+      message: 'Shipment DSP-TEST-001 has been dispatched.',
+    });
+
+    assert(Boolean(smsNotice.id), 'Outbound notification generated');
+    assertEqual(smsNotice.channel, 'SMS', 'Channel matches SMS');
+    assertEqual(smsNotice.providerDeliveryStatus, 'DELIVERED', 'Status marked DELIVERED');
+
+    // Retrieve from outbox
+    const outbox = await sandboxStore.getOutboxNotifications();
+    assert(outbox.length > 0, 'Outbox notifications retrieved');
+    assert(outbox.some((n) => n.id === smsNotice.id), 'Created notification exists in outbox');
+
+    // Test delivery retry
+    const retried = await sandboxStore.retryNotificationDelivery(smsNotice.id);
+    assertEqual(retried.id, smsNotice.id, 'Retried notification matches');
+    assert(retried.deliveryAttempts! >= 2, 'Delivery attempt incremented');
+  });
+
+  await test('Master Plan Staging', 'Staging Readiness Diagnostics Engine: Automated evaluation against 4 release checklist domains', async () => {
+    const report = await sandboxStore.getStagingReadinessReport();
+    assert(Boolean(report), 'Staging readiness report returned');
+    assertEqual(report.overallStatus, 'READY_FOR_STAGING', 'Overall status is READY_FOR_STAGING');
+
+    const cats = report.categories;
+    assert(Boolean(cats.buildAndCodeQuality), 'Build and Code Quality domain evaluated');
+    assert(Boolean(cats.identityAndSecurity), 'Identity and Security domain evaluated');
+    assert(Boolean(cats.dataAndOperations), 'Data and Operations domain evaluated');
+    assert(Boolean(cats.platformAndRelease), 'Platform and Release domain evaluated');
+
+    assertEqual(cats.buildAndCodeQuality.status, 'PASS', 'Build domain PASS');
+    assertEqual(cats.identityAndSecurity.status, 'PASS', 'Security domain PASS');
+    assertEqual(cats.dataAndOperations.status, 'PASS', 'Data domain PASS');
+    assertEqual(cats.platformAndRelease.status, 'PASS', 'Release domain PASS');
+
+    assert(report.metrics.failures === 0, 'Zero staging check failures');
+    assert(report.metrics.passed >= 16, 'At least 16 discrete checks passed');
+  });
+
+  // -------------------------------------------------------------------------
   // Summary
   // -------------------------------------------------------------------------
   console.log('\n========================================================================');

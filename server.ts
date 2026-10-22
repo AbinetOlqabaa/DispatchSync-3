@@ -25,7 +25,8 @@ async function startServer() {
   // Initialize Super-Admin one-time bootstrap
   initSuperAdminBootstrap();
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Security headers & Request Correlation ID
   app.use((req, res, next) => {

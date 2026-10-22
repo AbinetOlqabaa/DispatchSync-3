@@ -20,12 +20,16 @@ import {
   Globe,
   Check,
   Sparkles,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { useTheme, ThemeMode } from '../../context/ThemeContext.js';
 import { useTranslation } from '../../context/LanguageContext.js';
 import { UserRole } from '../../types/dispatch.js';
 import { SupportedLanguage } from '../../i18n/translations.js';
+import { useOfflineSync } from '../../utils/offlineSync.js';
 
 interface NavbarProps {
   currentTab: string;
@@ -43,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { user, logout, quickLoginDemoRole, unreadNotifsCount } = useAuth();
   const { themeMode, setThemeMode, effectiveTheme } = useTheme();
   const { language, setLanguage, t, languages, currentLanguageOption } = useTranslation();
+  const { isOnline, queueCount, replayNow } = useOfflineSync();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleSwitchOpen, setRoleSwitchOpen] = useState(false);
@@ -271,10 +276,27 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Notification Bell */}
-            {user && (
-              <button
-                onClick={onOpenNotifications}
+              {/* PWA Offline / Outbox Sync Status Badge */}
+              {!isOnline ? (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-800 text-[11px] font-semibold">
+                  <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Offline {queueCount > 0 ? `(${queueCount} queued)` : ''}</span>
+                </div>
+              ) : queueCount > 0 ? (
+                <button
+                  onClick={() => replayNow()}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-950/80 hover:bg-teal-900/80 text-teal-300 border border-teal-800 text-[11px] font-semibold cursor-pointer"
+                  title="Click to sync queued actions with server"
+                >
+                  <RefreshCw className="w-3 h-3 text-teal-400 animate-spin" />
+                  <span>Sync ({queueCount})</span>
+                </button>
+              ) : null}
+
+              {/* Notification Bell */}
+              {user && (
+                <button
+                  onClick={onOpenNotifications}
                 className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                 title={t('nav.notifications', 'In-app notification alerts')}
                 aria-label="View notifications"

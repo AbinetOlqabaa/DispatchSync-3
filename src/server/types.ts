@@ -81,11 +81,13 @@ export interface IDatabaseAdapter {
         condition: any;
         discrepancyType: any;
         notes?: string;
+        evidence?: any[];
       }>;
       signoff: {
         signerName: string;
         signerRole: string;
         comments?: string;
+        signatureSvgOrBase64?: string;
       };
       idempotencyKey?: string;
     },
@@ -117,8 +119,18 @@ export interface IDatabaseAdapter {
   getLocations(businessId: string): Promise<Location[]>;
   createLocation(location: Omit<Location, 'id' | 'createdAt'>, actor: User): Promise<Location>;
 
-  // Notifications
+  // Notifications & Outbox Delivery Engine
   getNotifications(userId: string): Promise<NotificationItem[]>;
+  getOutboxNotifications(): Promise<NotificationItem[]>;
+  retryNotificationDelivery(notificationId: string): Promise<NotificationItem>;
+  sendOutboundNotification(payload: {
+    channel: any;
+    recipient: string;
+    title: string;
+    message: string;
+    dispatchId?: string;
+    dispatchNumber?: string;
+  }): Promise<NotificationItem>;
   markNotificationRead(notificationId: string, userId: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
   createNotification(item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>): Promise<NotificationItem>;
@@ -127,8 +139,9 @@ export interface IDatabaseAdapter {
   getAuditLogs(filter?: { limitCount?: number; businessId?: string }): Promise<AuditLogEntry[]>;
   recordAudit(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<AuditLogEntry>;
 
-  // System
+  // System & Staging Diagnostics
   getSystemStatus(): Promise<SystemStatusInfo>;
+  getStagingReadinessReport(): Promise<any>;
   getAllBusinesses(): Promise<Business[]>;
 }
 

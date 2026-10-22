@@ -28,12 +28,15 @@ class ApiService {
   constructor() {
     this.token = localStorage.getItem(TOKEN_KEY);
     const storedUser = localStorage.getItem(USER_KEY);
-    if (storedUser) {
+    if (this.token && storedUser) {
       try {
         this.user = JSON.parse(storedUser);
       } catch {
         this.user = null;
       }
+    } else {
+      this.token = null;
+      this.user = null;
     }
   }
 
@@ -239,11 +242,13 @@ class ApiService {
         condition: string;
         discrepancyType?: string;
         notes?: string;
+        evidence?: any[];
       }>;
       signoff: {
         signerName: string;
         signerRole: string;
         comments?: string;
+        signatureSvgOrBase64?: string;
       };
       idempotencyKey?: string;
     }
@@ -314,6 +319,30 @@ class ApiService {
     return this.request('/api/notifications');
   }
 
+  async getOutboxNotifications(): Promise<NotificationItem[]> {
+    return this.request('/api/notifications/outbox');
+  }
+
+  async retryNotificationDelivery(id: string): Promise<NotificationItem> {
+    return this.request(`/api/notifications/${id}/retry`, {
+      method: 'POST',
+    });
+  }
+
+  async sendOutboundNotification(payload: {
+    channel: string;
+    recipient: string;
+    title: string;
+    message: string;
+    dispatchId?: string;
+    dispatchNumber?: string;
+  }): Promise<NotificationItem> {
+    return this.request('/api/notifications/outbound', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async markNotificationRead(id: string): Promise<void> {
     return this.request(`/api/notifications/${id}/read`, { method: 'PATCH' });
   }
@@ -327,9 +356,13 @@ class ApiService {
     return this.request('/api/audit');
   }
 
-  // System Diagnostics
+  // System Diagnostics & Staging Verification
   async getSystemStatus(): Promise<SystemStatusInfo> {
     return this.request('/api/system/status');
+  }
+
+  async getStagingReadinessReport(): Promise<any> {
+    return this.request('/api/system/staging-readiness');
   }
 }
 

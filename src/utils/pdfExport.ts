@@ -243,8 +243,20 @@ export function exportDispatchManifestPdf(dispatch: Dispatch) {
     doc.text(`Role / Title: ${dispatch.receiverSignoff.signerRole}`, margin + 4, y + 27);
     doc.text(`Signed Timestamp: ${new Date(dispatch.receiverSignoff.signedAt).toLocaleString()}`, margin + 4, y + 33);
 
+    if (dispatch.receiverSignoff.signatureSvgOrBase64) {
+      doc.setTextColor(79, 70, 229);
+      doc.text('[Digital Glass Signature Captured & Archived]', margin + 90, y + 14);
+    }
+
     if (dispatch.receiverSignoff.comments) {
+      doc.setTextColor(71, 85, 105);
       doc.text(`Comments: ${dispatch.receiverSignoff.comments}`, margin + 90, y + 21);
+    }
+
+    const totalEvidence = (dispatch.discrepancyCases || []).reduce((acc, c) => acc + (c.evidence?.length || 0), 0);
+    if (totalEvidence > 0) {
+      doc.setTextColor(180, 83, 9);
+      doc.text(`[Evidence: ${totalEvidence} Tamper-Evident Photos Logged with SHA-256]`, margin + 90, y + 28);
     }
   } else {
     // Blank signoff lines for physical pen signoff if offline

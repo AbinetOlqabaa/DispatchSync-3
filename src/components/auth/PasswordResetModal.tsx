@@ -34,7 +34,10 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
     setIsSubmitting(true);
     try {
       const res = await requestPasswordReset(email);
-      setStatusMessage(res.message);
+      setStatusMessage(
+        (res as { message?: string }).message ||
+        (res.resetTokenPreview ? `Reset instructions prepared. Token: ${res.resetTokenPreview}` : 'Password reset instructions have been dispatched.')
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Reset request failed');
     } finally {
