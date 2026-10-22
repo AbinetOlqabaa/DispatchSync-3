@@ -1,157 +1,82 @@
-import express, { Request, Response } from 'express';
-import { createServer as createViteServer } from 'vite';
+import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { createServer as createViteServer } from 'vite';
+
+import { initSuperAdminBootstrap } from './src/server/security.js';
+import authRoutes from './src/server/routes/authRoutes.js';
+import dispatchRoutes from './src/server/routes/dispatchRoutes.js';
+import partnerRoutes from './src/server/routes/partnerRoutes.js';
+import auditRoutes from './src/server/routes/auditRoutes.js';
+import systemRoutes from './src/server/routes/systemRoutes.js';
+import locationRoutes from './src/server/routes/locationRoutes.js';
+import notificationRoutes from './src/server/routes/notificationRoutes.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isProduction = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT) || 3000;
-
-// In-memory server-side state for super-admin one-time bootstrap
-let superAdminProvisioned = false;
-
 async function startServer() {
   const app = express();
+  const PORT = Number(process.env.PORT) || 3000;
+
+  // Initialize Super-Admin one-time bootstrap
+  initSuperAdminBootstrap();
+
   app.use(express.json());
 
-  // Security headers & basic audit logging
+  // Security headers & Request Correlation ID
   app.use((req, res, next) => {
+    const correlationId = (req.headers['x-correlation-id'] as string) || `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    res.setHeader('X-Correlation-ID', correlationId);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
   });
 
-  // --- API Routes ---
+  // Mount API endpoints
+  app.use('/api/auth', authRoutes);
+  app.use('/api/dispatches', dispatchRoutes);
+  app.use('/api/partners', partnerRoutes);
+  app.use('/api/locations', locationRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/audit', auditRoutes);
+  app.use('/api/system', systemRoutes);
 
-  // Health check
-  app.get('/api/health', (req: Request, res: Response) => {
+  // Health check endpoint
+  app.get('/api/health', (req, res) => {
     res.json({
       status: 'healthy',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      nodeVersion: process.version,
-      platform: process.platform,
-      memoryUsage: process.memoryUsage()
+      time: new Date().toISOString(),
+      service: 'DispatchBridge Kernel API',
     });
   });
 
-  // Environment and Adapter Status Check
-  app.get('/api/config/status', (req: Request, res: Response) => {
-    res.json({
-      environment: {
-        platform: 'Linux Container (Google Cloud Run / Node.js 22)',
-        isNativeAndroid: false,
-        nativeAndroidSupported: false,
-        appType: 'Mobile-First PWA (Web)',
-        verdict: 'No native Android SDK/Gradle build toolchain present. Responsive installable mobile PWA provided as specified.',
-        notes: 'Container environment runs Linux with Node.js and Chromium. Android APK packaging requires external CI/CD or Android Studio.'
-      },
-      persistence: {
-        adapter: 'LOCAL_SANDBOX_ADAPTER',
-        isLiveCloudDatabase: false,
-        mode: 'ISOLATED_CLIENT_STORAGE',
-        cloudProvider: 'Google Cloud Firestore (Ready for Provisioning)',
-        status: 'Unconfigured / Sandbox Active'
-      },
-      auth: {
-        provider: 'LOCAL_SECURE_AUTH',
-        isLiveAuthProvider: false,
-        phoneVerificationMode: 'READINESS_SIMULATOR (OTP 123456)'
-      },
-      security: {
-        superAdminProvisioned,
-        oneTimeBootstrapAllowed: !superAdminProvisioned,
-        tamperResistantAuditLedger: true,
-        roleBasedAuthorization: true
-      },
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // One-time Super-Admin Bootstrap endpoint
-  app.post('/api/admin/bootstrap', (req: Request, res: Response) => {
-    if (superAdminProvisioned) {
-      return res.status(403).json({
-        error: 'Forbidden: Super Administrator account has already been bootstrapped. One-time provisioning is locked.'
-      });
-    }
-
-    const { secretToken, email, fullName } = req.body;
-    const expectedTokens = ['DISPATCH_BOOTSTRAP_2026_ROOT', 'SECRET_SUPER_ADMIN_INIT_KEY'];
-
-    if (!secretToken || !expectedTokens.includes(String(secretToken).trim())) {
-      return res.status(401).json({
-        error: 'Unauthorized: Invalid one-time bootstrap secret token.'
-      });
-    }
-
-    if (!email || !fullName) {
-      return res.status(400).json({
-        error: 'Bad Request: Missing required email or fullName for Super Administrator.'
-      });
-    }
-
-    superAdminProvisioned = true;
-    return res.json({
-      success: true,
-      message: 'Super Administrator account initialized successfully. One-time bootstrap closed.',
-      admin: {
-        email,
-        fullName,
-        role: 'SUPER_ADMIN',
-        provisionedAt: new Date().toISOString()
-      }
-    });
-  });
-
-  // Server-side Dispatch Validation
-  app.post('/api/dispatches/validate', (req: Request, res: Response) => {
-    const { items, receiverPartnerId, originLocation, destinationLocation } = req.body;
-
-    const errors: string[] = [];
-    if (!receiverPartnerId) errors.push('receiverPartnerId is required.');
-    if (!originLocation || String(originLocation).trim().length < 3) errors.push('originLocation must be at least 3 characters.');
-    if (!destinationLocation || String(destinationLocation).trim().length < 3) errors.push('destinationLocation must be at least 3 characters.');
-    if (!Array.isArray(items) || items.length === 0) errors.push('Manifest must contain at least one item.');
-
-    if (Array.isArray(items)) {
-      items.forEach((it, idx) => {
-        if (!it.name || String(it.name).trim().length === 0) errors.push(`Item #${idx + 1} is missing a name.`);
-        if (Number(it.quantity) <= 0) errors.push(`Item #${idx + 1} must have a quantity > 0.`);
-        if (Number(it.unitPrice) < 0) errors.push(`Item #${idx + 1} unitPrice cannot be negative.`);
-      });
-    }
-
-    if (errors.length > 0) {
-      return res.status(422).json({ valid: false, errors });
-    }
-
-    return res.json({ valid: true, message: 'Dispatch payload passed server validation.' });
-  });
-
-  // Client integration: Vite in dev, static files in production
-  if (!isProduction) {
+  // Vite middleware in development
+  if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa'
+      appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    // Production static serving
+    const distPath = path.resolve(__dirname, 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[DispatchSync Kernel] Server listening on port ${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+    console.log(`[DispatchBridge] Full-Stack Kernel active on http://0.0.0.0:${PORT}`);
   });
 }
 
 startServer().catch((err) => {
-  console.error('[DispatchSync Kernel] Failed to start server:', err);
+  console.error('[DispatchBridge] Failed to launch server:', err);
   process.exit(1);
 });

@@ -1,271 +1,237 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { AppShell } from './components/layout/AppShell';
-import { AppView, canAccessView } from './services/authorization';
-import { Dispatch } from './types';
-import { sandboxAdapter } from './services/local-adapter';
+import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { ThemeProvider } from './context/ThemeContext.js';
+import { LanguageProvider } from './context/LanguageContext.js';
+import { Navbar } from './components/layout/Navbar.js';
+import { BottomNav } from './components/layout/BottomNav.js';
+import { NotificationBanner } from './components/common/NotificationBanner.js';
+import { AuthModal } from './pages/auth/AuthModal.js';
+import { BusinessOwnerDashboard } from './pages/dashboards/BusinessOwnerDashboard.js';
+import { SenderDashboard } from './pages/dashboards/SenderDashboard.js';
+import { ReceiverDashboard } from './pages/dashboards/ReceiverDashboard.js';
+import { SuperAdminDashboard } from './pages/dashboards/SuperAdminDashboard.js';
+import { DispatchListPage } from './pages/dispatches/DispatchListPage.js';
+import { DispatchDetailPage } from './pages/dispatches/DispatchDetailPage.js';
+import { CreateDispatchModal } from './pages/dispatches/CreateDispatchModal.js';
+import { PublicPartnerView } from './pages/dispatches/PublicPartnerView.js';
+import { PartnersPage } from './pages/partners/PartnersPage.js';
+import { LocationsPage } from './pages/locations/LocationsPage.js';
+import { AuditPage } from './pages/audit/AuditPage.js';
+import { SystemStatusPage } from './pages/system/SystemStatusPage.js';
+import { RecommendationsView } from './components/recommendations/RecommendationsView.js';
+import { NotificationDrawer } from './components/notifications/NotificationDrawer.js';
 
-// Dashboards
-import { SuperAdminDashboard } from './components/dashboard/SuperAdminDashboard';
-import { BusinessOwnerDashboard } from './components/dashboard/BusinessOwnerDashboard';
-import { SenderDashboard } from './components/dashboard/SenderDashboard';
-import { ReceiverDashboard } from './components/dashboard/ReceiverDashboard';
+function MainApp() {
+  const { user } = useAuth();
 
-// Features
-import { DispatchList } from './components/dispatches/DispatchList';
-import { CreateDispatchForm } from './components/dispatches/CreateDispatchForm';
-import { DispatchDetailModal } from './components/dispatches/DispatchDetailModal';
-import { ConfigStatusPage } from './components/config/ConfigStatusPage';
-import { AuditLogViewer } from './components/audit/AuditLogViewer';
-import { PartnersList } from './components/partners/PartnersList';
+  // Navigation State
+  const [currentTab, setCurrentTab] = useState<string>('dispatches');
+  const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null);
+  const [publicShareToken, setPublicShareToken] = useState<string | null>(null);
 
-// Auth Modals
-import { SignInModal } from './components/auth/SignInModal';
-import { RegisterModal } from './components/auth/RegisterModal';
-import { PasswordResetModal } from './components/auth/PasswordResetModal';
-import { PhoneVerificationModal } from './components/auth/PhoneVerificationModal';
-import { SuperAdminBootstrapModal } from './components/auth/SuperAdminBootstrapModal';
+  // Modal & Drawer State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'register' | 'forgot' | 'verifyPhone'>('signin');
+  const [isCreateDispatchOpen, setIsCreateDispatchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-const MainAppContent: React.FC = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const [currentView, setCurrentView] = useState<AppView>('DASHBOARD');
-  const [dispatches, setDispatches] = useState<Dispatch[]>([]);
-  const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
-  const [isLoadingDispatches, setIsLoadingDispatches] = useState<boolean>(true);
-
-  // Modal controls
-  const [signInOpen, setSignInOpen] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [resetOpen, setResetOpen] = useState(false);
-  const [phoneVerifyOpen, setPhoneVerifyOpen] = useState(false);
-  const [bootstrapOpen, setBootstrapOpen] = useState(false);
-
-  // Check URL query parameters (e.g. ?view=dispatches or ?autostart=1)
+  // Check URL search params for public delivery share token (?token=...)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const requestedView = params.get('view')?.toUpperCase() as AppView;
-      if (requestedView && ['DASHBOARD', 'DISPATCHES', 'SYSTEM_CONFIG'].includes(requestedView)) {
-        setCurrentView(requestedView);
-      }
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setPublicShareToken(token);
     }
   }, []);
 
-  const refreshDispatches = async () => {
-    setIsLoadingDispatches(true);
-    try {
-      const list = await sandboxAdapter.listDispatches();
-      setDispatches(list);
-    } finally {
-      setIsLoadingDispatches(false);
-    }
-  };
-
+  // When user logs in and is on dispatches, gently pivot to their dashboard
   useEffect(() => {
-    refreshDispatches();
+    if (user && currentTab === 'dispatches' && !selectedDispatchId && !publicShareToken) {
+      setCurrentTab('dashboard');
+    }
   }, [user]);
 
-  const handleNavigate = (view: AppView) => {
-    if (user && !canAccessView(user, view)) {
-      setCurrentView('DASHBOARD');
-      return;
-    }
-    setCurrentView(view);
-  };
-
-  const handleDispatchUpdated = (updated: Dispatch) => {
-    setSelectedDispatch(updated);
-    setDispatches(prev => prev.map(d => d.id === updated.id ? updated : d));
-  };
-
-  const handleCreateSuccess = async (dispatchId: string) => {
-    await refreshDispatches();
-    const created = await sandboxAdapter.getDispatchById(dispatchId);
-    if (created) {
-      setSelectedDispatch(created);
-    }
-    setCurrentView('DISPATCHES');
-  };
+  // If public token is active, show the partner delivery manifest
+  if (publicShareToken) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 antialiased pb-12">
+        <PublicPartnerView
+          shareToken={publicShareToken}
+          onExit={() => {
+            setPublicShareToken(null);
+            window.history.replaceState({}, '', window.location.pathname);
+          }}
+        />
+      </div>
+    );
+  }
 
   // Render role-specific dashboard
   const renderDashboard = () => {
     if (!user) {
       return (
-        <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-900/60 border border-slate-800">
-          <h2 className="text-xl font-bold text-white mb-2">Welcome to DispatchSync</h2>
-          <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
-            Sign in to access your role-specific dashboard, dispatches, and reconciliation tools.
+        <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-2xl max-w-lg mx-auto my-12 space-y-3">
+          <h2 className="text-lg font-bold text-white">Sign In Required</h2>
+          <p className="text-xs text-slate-400">
+            Please sign in to access your role-specific dashboard, or explore the public Dispatches and System Status pages.
           </p>
-          <div className="flex justify-center gap-3">
-            <button
-              onClick={() => setSignInOpen(true)}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setRegisterOpen(true)}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700"
-            >
-              Register Account
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setAuthModalMode('signin');
+              setIsAuthModalOpen(true);
+            }}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl cursor-pointer"
+          >
+            Sign In to Dashboard
+          </button>
         </div>
       );
     }
 
     switch (user.role) {
       case 'SUPER_ADMIN':
-        return (
-          <SuperAdminDashboard
-            dispatches={dispatches}
-            onNavigate={handleNavigate}
-          />
-        );
+        return <SuperAdminDashboard onNavigateStatus={() => setCurrentTab('status')} />;
       case 'BUSINESS_OWNER':
         return (
           <BusinessOwnerDashboard
-            dispatches={dispatches}
-            onSelectDispatch={setSelectedDispatch}
-            onNavigate={handleNavigate}
+            onSelectDispatch={(id) => setSelectedDispatchId(id)}
+            onNavigateTab={(tab) => setCurrentTab(tab)}
+            onCreateDispatch={() => setIsCreateDispatchOpen(true)}
           />
         );
       case 'SENDER':
         return (
           <SenderDashboard
-            dispatches={dispatches}
-            onSelectDispatch={setSelectedDispatch}
-            onNavigate={handleNavigate}
+            onSelectDispatch={(id) => setSelectedDispatchId(id)}
+            onCreateDispatch={() => setIsCreateDispatchOpen(true)}
+            onOpenPublicLink={(token) => setPublicShareToken(token)}
           />
         );
       case 'RECEIVER':
-        return (
-          <ReceiverDashboard
-            dispatches={dispatches}
-            onSelectDispatch={setSelectedDispatch}
-            onNavigate={handleNavigate}
-          />
-        );
+        return <ReceiverDashboard onSelectDispatch={(id) => setSelectedDispatchId(id)} />;
       default:
-        return null;
+        return <DispatchListPage onSelectDispatch={(id) => setSelectedDispatchId(id)} onCreateDispatch={() => setIsCreateDispatchOpen(true)} onOpenPublicLink={(t) => setPublicShareToken(t)} />;
     }
   };
 
   return (
-    <AppShell
-      currentView={currentView}
-      onNavigate={handleNavigate}
-      onOpenSignIn={() => setSignInOpen(true)}
-      onOpenRegister={() => setRegisterOpen(true)}
-      onOpenPhoneVerify={() => setPhoneVerifyOpen(true)}
-      onOpenBootstrap={() => setBootstrapOpen(true)}
-    >
-      {authLoading ? (
-        <div className="p-16 text-center">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-400">Restoring cryptographic session...</p>
-        </div>
-      ) : (
-        <>
-          {currentView === 'DASHBOARD' && renderDashboard()}
-
-          {currentView === 'DISPATCHES' && (
-            <DispatchList
-              dispatches={dispatches}
-              userRole={user?.role || 'BUSINESS_OWNER'}
-              onSelectDispatch={setSelectedDispatch}
-              onNavigate={handleNavigate}
-              isLoading={isLoadingDispatches}
-            />
-          )}
-
-          {currentView === 'CREATE_DISPATCH' && (
-            <CreateDispatchForm
-              onBack={() => setCurrentView('DISPATCHES')}
-              onSuccess={handleCreateSuccess}
-            />
-          )}
-
-          {currentView === 'PARTNERS' && (
-            <PartnersList onBack={() => setCurrentView('DASHBOARD')} />
-          )}
-
-          {currentView === 'AUDIT_LOGS' && (
-            <AuditLogViewer onBack={() => setCurrentView('DASHBOARD')} />
-          )}
-
-          {currentView === 'SYSTEM_CONFIG' && (
-            <ConfigStatusPage onOpenBootstrap={() => setBootstrapOpen(true)} />
-          )}
-        </>
-      )}
-
-      {/* Modals */}
-      <DispatchDetailModal
-        dispatch={selectedDispatch}
-        userRole={user?.role || 'BUSINESS_OWNER'}
-        onClose={() => setSelectedDispatch(null)}
-        onDispatchUpdated={handleDispatchUpdated}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-20 md:pb-8 w-full max-w-full overflow-x-hidden">
+      {/* Top Navigation */}
+      <Navbar
+        currentTab={currentTab}
+        onSelectTab={(tab) => {
+          setSelectedDispatchId(null);
+          setCurrentTab(tab);
+        }}
+        onOpenAuth={() => {
+          setAuthModalMode('signin');
+          setIsAuthModalOpen(true);
+        }}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
       />
 
-      <SignInModal
-        isOpen={signInOpen}
-        onClose={() => setSignInOpen(false)}
-        onOpenRegister={() => {
-          setSignInOpen(false);
-          setRegisterOpen(true);
+      {/* Sandbox Isolation & Notification Banners */}
+      <NotificationBanner
+        onOpenPhoneVerify={() => {
+          setAuthModalMode('verifyPhone');
+          setIsAuthModalOpen(true);
         }}
-        onOpenForgotPassword={() => {
-          setSignInOpen(false);
-          setResetOpen(true);
-        }}
-        onOpenBootstrap={() => {
-          setSignInOpen(false);
-          setBootstrapOpen(true);
+        onNavigateStatus={() => {
+          setSelectedDispatchId(null);
+          setCurrentTab('status');
         }}
       />
 
-      <RegisterModal
-        isOpen={registerOpen}
-        onClose={() => setRegisterOpen(false)}
-        onOpenSignIn={() => {
-          setRegisterOpen(false);
-          setSignInOpen(true);
+      {/* Main View Area - With max-w-full and overflow containment */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 max-w-full overflow-x-hidden">
+        {selectedDispatchId ? (
+          <DispatchDetailPage
+            dispatchId={selectedDispatchId}
+            onBack={() => setSelectedDispatchId(null)}
+            onOpenPublicLink={(token) => setPublicShareToken(token)}
+          />
+        ) : (
+          <>
+            {currentTab === 'dashboard' && renderDashboard()}
+            {currentTab === 'dispatches' && (
+              <DispatchListPage
+                onSelectDispatch={(id) => setSelectedDispatchId(id)}
+                onCreateDispatch={() => setIsCreateDispatchOpen(true)}
+                onOpenPublicLink={(token) => setPublicShareToken(token)}
+              />
+            )}
+            {currentTab === 'locations' && <LocationsPage />}
+            {currentTab === 'partners' && (
+              <PartnersPage
+                onCreateDispatchWithPartner={(partnerId) => {
+                  setIsCreateDispatchOpen(true);
+                }}
+              />
+            )}
+            {currentTab === 'recommendations' && (
+              <RecommendationsView
+                onCreateDispatchWithItem={(item) => {
+                  setIsCreateDispatchOpen(true);
+                }}
+              />
+            )}
+            {currentTab === 'audit' && <AuditPage />}
+            {currentTab === 'status' && <SystemStatusPage />}
+          </>
+        )}
+      </main>
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNav
+        currentTab={currentTab}
+        onSelectTab={(tab) => {
+          setSelectedDispatchId(null);
+          setCurrentTab(tab);
         }}
-        onOpenPhoneVerification={() => setPhoneVerifyOpen(true)}
       />
 
-      <PasswordResetModal
-        isOpen={resetOpen}
-        onClose={() => setResetOpen(false)}
-        onBackToSignIn={() => {
-          setResetOpen(false);
-          setSignInOpen(true);
+      {/* In-app Notification Alerts Drawer */}
+      <NotificationDrawer
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onSelectDispatch={(id) => {
+          setSelectedDispatchId(id);
+          setIsNotificationsOpen(false);
         }}
       />
 
-      <PhoneVerificationModal
-        isOpen={phoneVerifyOpen}
-        onClose={() => setPhoneVerifyOpen(false)}
-        onSuccess={() => setPhoneVerifyOpen(false)}
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
-      <SuperAdminBootstrapModal
-        isOpen={bootstrapOpen}
-        onClose={() => setBootstrapOpen(false)}
-        onSuccess={() => {
-          setBootstrapOpen(false);
-          refreshDispatches();
+      {/* Create Dispatch Manifest Modal */}
+      <CreateDispatchModal
+        isOpen={isCreateDispatchOpen}
+        onClose={() => setIsCreateDispatchOpen(false)}
+        onSuccess={(createdId) => {
+          setSelectedDispatchId(createdId);
         }}
       />
-    </AppShell>
+    </div>
   );
-};
+}
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

@@ -1,6 +1,6 @@
 {
-  "name": "DispatchSync",
-  "description": "Secure business dispatch management, delivery verification, recipient receipt reconciliation, loss tracking, and tamper-resistant audit logs.",
+  "name": "DispatchBridge - Delivery & Reconciliation",
+  "description": "Secure B2B dispatch management, partner proof-of-delivery tracking, loss reconciliation, and multi-role operations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

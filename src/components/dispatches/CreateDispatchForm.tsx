@@ -137,7 +137,7 @@ export const CreateDispatchForm: React.FC<CreateDispatchFormProps> = ({ onBack, 
       // Execute creation via adapter
       const newDispatch = await sandboxAdapter.createDispatch({
         senderId: user?.id || 'sender-demo',
-        senderName: user?.fullName || 'Carlos Mendoza',
+        senderName: user?.name || (user as any)?.fullName || 'Carlos Mendoza',
         receiverPartnerId: selectedPartnerId,
         originLocation,
         destinationLocation,

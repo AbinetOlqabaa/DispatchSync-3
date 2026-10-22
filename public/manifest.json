@@ -1,0 +1,22 @@
+{
+  "short_name": "DispatchBridge",
+  "name": "DispatchBridge Business Delivery & Reconciliation",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#090d16",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "description": "Enterprise delivery tracking, partner handoff verification, and quantity reconciliation."
+}

@@ -77,7 +77,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     { view: 'SYSTEM_CONFIG', label: 'System Status', icon: Cpu }
   ];
 
-  const allowedNavItems = navItems.filter(item => canAccessView(user, item.view));
+  const allowedNavItems = navItems.filter(item => canAccessView(user as any, item.view));
 
   const handleRoleSelect = async (role: UserRole) => {
     setRoleDropdownOpen(false);

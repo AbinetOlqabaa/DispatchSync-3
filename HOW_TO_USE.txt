@@ -1,0 +1,13 @@
+# Business Dispatch AI Builder Context Pack
+
+This ZIP contains a `.ai/` directory intended to be placed at the root of your starter project.
+
+## Recommended workflow
+1. In Google AI Studio, use `.ai/STARTER_PROMPT.md` to create the initial kernel app.
+2. Download/export that project.
+3. Extract this ZIP into the project root so that `.ai/README_FIRST.md` exists.
+4. Re-upload the combined project to AI Studio.
+5. Send the prompt in `.ai/CONTINUE_IN_NEW_SESSION_PROMPT.md`.
+6. Let the model follow `.ai/00_MASTER_PLAN.md` and update `.ai/BUILD_STATE.md`.
+
+This pack is a specification and workflow guide; it is not a completed application. AI Studio must implement the code, and real credentials/providers, deployment, device testing and security review may require your action.

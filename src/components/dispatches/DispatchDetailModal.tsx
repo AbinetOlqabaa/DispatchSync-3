@@ -40,7 +40,7 @@ export const DispatchDetailModal: React.FC<DispatchDetailModalProps> = ({
   const [receivedQty, setReceivedQty] = useState<number>(dispatch ? dispatch.totalQuantity : 0);
   const [damagedQty, setDamagedQty] = useState<number>(0);
   const [discrepancyNotes, setDiscrepancyNotes] = useState<string>('');
-  const [signerName, setSignerName] = useState<string>(user?.fullName || 'Receiver Agent');
+  const [signerName, setSignerName] = useState<string>(user?.name || (user as any)?.fullName || 'Receiver Agent');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 

@@ -1,159 +1,188 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
-import { sandboxAdapter } from '../services/local-adapter';
-import { AuthCredentials, RegisterPayload } from '../services/types';
-import { requestServerBootstrap } from '../services/api-client';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { NotificationItem, User, UserRole } from '../types/dispatch.js';
+import { api } from '../services/api.js';
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
-  error: string | null;
-  clearError: () => void;
-  signIn: (credentials: AuthCredentials) => Promise<User>;
-  signUp: (payload: RegisterPayload) => Promise<User>;
-  signOut: () => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
-  verifyPhoneOtp: (otp: string) => Promise<{ success: boolean; message: string }>;
-  bootstrapSuperAdmin: (secretToken: string, payload: { email: string; fullName: string; password: string }) => Promise<User>;
-  switchDemoRole: (role: UserRole) => Promise<User>;
+  notifications: NotificationItem[];
+  unreadNotifsCount: number;
+  login: (email: string, password: string) => Promise<void>;
+  register: (payload: any) => Promise<void>;
+  logout: () => void;
+  verifyPhone: (code: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
+  markNotificationAsRead: (id: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
+  switchBusiness: (businessId: string) => Promise<void>;
+  quickLoginDemoRole: (role: UserRole) => Promise<void>;
+  signIn: (emailOrPayload: any, maybePassword?: string) => Promise<void>;
+  signUp: (payload: any) => Promise<void>;
+  signOut: () => void;
+  switchDemoRole: (role: any) => Promise<void>;
+  verifyPhoneOtp: (code: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; resetTokenPreview?: string }>;
+  bootstrapSuperAdmin: (secret: string, payload: any) => Promise<{ success: boolean; user: User }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(api.getCurrentUser());
+  const [token, setToken] = useState<string | null>(api.getToken());
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const fetchNotifs = async () => {
+    if (api.getToken()) {
+      try {
+        const notifs = await api.getNotifications();
+        setNotifications(notifs);
+      } catch {
+        // Silently catch
+      }
+    } else {
+      setNotifications([]);
+    }
+  };
 
   useEffect(() => {
-    async function initAuth() {
-      try {
-        const current = await sandboxAdapter.getCurrentUser();
-        setUser(current);
-      } catch (err: unknown) {
-        console.error('Failed to restore auth session:', err);
-      } finally {
-        setIsLoading(false);
+    const initAuth = async () => {
+      if (api.getToken()) {
+        try {
+          const profile = await api.getProfile();
+          setUser(profile);
+          await fetchNotifs();
+        } catch {
+          api.clearSession();
+          setUser(null);
+          setToken(null);
+        }
       }
-    }
+      setIsLoading(false);
+    };
+
     initAuth();
   }, []);
 
-  const clearError = () => setError(null);
+  const login = async (emailOrPayload: any, maybePassword?: string) => {
+    let email = emailOrPayload;
+    let password = maybePassword;
+    if (typeof emailOrPayload === 'object' && emailOrPayload !== null) {
+      email = emailOrPayload.email;
+      password = emailOrPayload.password;
+    }
+    const res = await api.login(email, password || '');
+    setUser(res.user);
+    setToken(res.token);
+    await fetchNotifs();
+  };
 
-  const signIn = async (credentials: AuthCredentials): Promise<User> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const authenticated = await sandboxAdapter.signIn(credentials);
-      setUser(authenticated);
-      return authenticated;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setError(msg);
-      throw err;
-    } finally {
-      setIsLoading(false);
+  const register = async (payload: any) => {
+    const res = await api.register(payload);
+    setUser(res.user);
+    setToken(res.token);
+    await fetchNotifs();
+  };
+
+  const logout = () => {
+    api.clearSession();
+    setUser(null);
+    setToken(null);
+    setNotifications([]);
+  };
+
+  const verifyPhone = async (code: string) => {
+    await api.verifyPhone(code);
+    if (user) {
+      setUser({ ...user, phoneVerified: true });
     }
   };
 
-  const signUp = async (payload: RegisterPayload): Promise<User> => {
-    setIsLoading(true);
-    setError(null);
+  const refreshProfile = async () => {
     try {
-      const created = await sandboxAdapter.signUp(payload);
-      setUser(created);
-      return created;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed';
-      setError(msg);
-      throw err;
-    } finally {
-      setIsLoading(false);
+      const profile = await api.getProfile();
+      setUser(profile);
+    } catch {
+      // Ignored
     }
   };
 
-  const signOut = async (): Promise<void> => {
-    setIsLoading(true);
-    try {
-      await sandboxAdapter.signOut();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
+  const refreshNotifications = async () => {
+    await fetchNotifs();
+  };
+
+  const markNotificationAsRead = async (id: string) => {
+    await api.markNotificationRead(id);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
+    );
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    await api.markAllNotificationsRead();
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, isRead: true, readAt: new Date().toISOString() }))
+    );
+  };
+
+  const switchBusiness = async (businessId: string) => {
+    const updated = await api.switchActiveBusiness(businessId);
+    setUser(updated);
+    await fetchNotifs();
+  };
+
+  const quickLoginDemoRole = async (role: UserRole) => {
+    const roleCreds: Record<UserRole, { email: string }> = {
+      BUSINESS_OWNER: { email: 'owner@apexsupply.com' },
+      SENDER: { email: 'dispatcher@apexsupply.com' },
+      RECEIVER: { email: 'store@metroretail.com' },
+      SUPER_ADMIN: { email: 'admin@dispatchbridge.internal' },
+    };
+
+    const target = roleCreds[role];
+    if (target) {
+      await login(target.email, 'Password123!');
     }
   };
+
+  const unreadNotifsCount = notifications.filter((n) => !n.isRead).length;
 
   const requestPasswordReset = async (email: string) => {
-    return sandboxAdapter.requestPasswordReset(email);
+    return api.requestPasswordReset(email);
   };
 
-  const verifyPhoneOtp = async (otp: string) => {
-    if (!user) throw new Error('No user is currently signed in to verify.');
-    const result = await sandboxAdapter.verifyPhoneOtp(user.phoneNumber, otp);
-    setUser(prev => prev ? { ...prev, phoneVerified: true, status: 'ACTIVE' } : null);
-    return result;
-  };
-
-  const bootstrapSuperAdmin = async (
-    secretToken: string,
-    payload: { email: string; fullName: string; password: string }
-  ): Promise<User> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // First attempt server-side verification if server available
-      try {
-        await requestServerBootstrap({
-          secretToken,
-          email: payload.email,
-          fullName: payload.fullName
-        });
-      } catch (serverErr) {
-        console.warn('Server bootstrap sync skipped/offline, continuing with local adapter:', serverErr);
-      }
-
-      const adminUser = await sandboxAdapter.bootstrapSuperAdmin(secretToken, payload);
-      setUser(adminUser);
-      return adminUser;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Bootstrap failed';
-      setError(msg);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const switchDemoRole = async (role: UserRole): Promise<User> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const switched = await sandboxAdapter.switchDemoRole(role);
-      setUser(switched);
-      return switched;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Role switch failed';
-      setError(msg);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
+  const bootstrapSuperAdmin = async (secret: string, payload: any) => {
+    return api.bootstrapSuperAdmin({ bootstrapSecret: secret, ...payload });
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        token,
         isLoading,
-        error,
-        clearError,
-        signIn,
-        signUp,
-        signOut,
+        notifications,
+        unreadNotifsCount,
+        login,
+        register,
+        logout,
+        verifyPhone,
+        refreshProfile,
+        refreshNotifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        switchBusiness,
+        quickLoginDemoRole,
+        signIn: login,
+        signUp: register,
+        signOut: logout,
+        switchDemoRole: quickLoginDemoRole,
+        verifyPhoneOtp: verifyPhone,
         requestPasswordReset,
-        verifyPhoneOtp,
         bootstrapSuperAdmin,
-        switchDemoRole
       }}
     >
       {children}
@@ -161,10 +190,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
