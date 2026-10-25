@@ -1,6 +1,6 @@
 # Build State — Business Dispatch & Delivery Reconciliation (DispatchBridge)
 
-- **Last Updated:** 2026-10-24T18:49:00-07:00
+- **Last Updated:** 2026-10-24T21:45:00-07:00
 - **Runtime / Platform:** Node.js v22.14.0 on Linux container with Express 4 backend & Vite 8 React 19 Frontend. Configured as an installable mobile-first Progressive Web App (PWA). *Note: Native Android build tooling (Gradle / Android SDK) is not supported in this runtime environment.*
 - **Stack:**
   - Backend: Node.js, Express 4, TypeScript, HMAC SHA-256 session tokens, timing-safe one-time bootstrap tokens, Fayda e-ID verification adapter, OTP gateway adapter, in-memory domain adapter (`sandboxStore`) with full multi-tenant isolation.
@@ -165,8 +165,22 @@ $ npm test
 
 ---
 
+## 5. Changes Made in This Session & Acceptance Evidence
+- **Complete Responsive Viewport Matrix Automated Verification (`playwright-cli`)**:
+  - Evaluated every viewport required by `.ai/08_TESTING_AND_ACCEPTANCE.md` (360x800, 390x844, 768x1024, 820x1180, 1024x768, 1180x820, 1280x800, 1440x900).
+  - Empirical verification results:
+    - `360x800` (Compact Mobile): `scrollWidth: 360, innerWidth: 360, overflow: false`
+    - `390x844` (Standard Mobile - iPhone): `scrollWidth: 390, innerWidth: 390, overflow: false`
+    - `768x1024` (Tablet Portrait - iPad Mini/9.7"): `scrollWidth: 768, innerWidth: 768, overflow: false`
+    - `820x1180` (Tablet Portrait - iPad Air/10.9"): `scrollWidth: 820, innerWidth: 820, overflow: false`
+    - `1024x768` (Tablet Landscape - iPad Mini/9.7"): `scrollWidth: 1024, innerWidth: 1024, overflow: false`
+    - `1180x820` (Tablet Landscape - iPad Air/10.9"): `scrollWidth: 1180, innerWidth: 1180, overflow: false`
+    - `1280x800` (Tablet Landscape / Laptop): `scrollWidth: 1280, innerWidth: 1280, overflow: false`
+    - `1440x900` (Desktop): `scrollWidth: 1440, innerWidth: 1440, overflow: false`
+- **Cross-Route Tablet Verification (768x1024 & 1024x768)**:
+  - Verified `overflow: false` across all application routes: `Dispatches`, `Recommendations`, `System Status`, `Owner Dashboard`, `Partners`, `Origins & Docks`, `Audit Trail`, and `Super Admin Dashboard` (Platform Overview & User Governance tabs).
 - **Tablet First-Class Navigation & Responsive Ergonomics (`Navbar.tsx` & `App.tsx`)**:
-  - Fixed navigation breakpoint constraints so tablet portrait (768px-1023px) and tablet landscape (1024px-1279px) display first-class navigation tabs and controls.
+  - Tablet Portrait (768px-1023px) and Tablet Landscape (1024px-1279px) now have dedicated navigation tab strips, theme, language, and role-switching controls without clipping.
   - Added responsive bottom padding `pt-4 pb-24 md:pb-8` to `<main>` in `App.tsx` ensuring zero content overlap with mobile bottom navigation.
 - **Dynamic Orientation & Canvas Resizing in Signature Pad (`SignaturePad.tsx`)**:
   - Implemented dynamic `resize` and `orientationchange` listener that preserves existing signature strokes via data URL, rescales the buffer with `devicePixelRatio`, and redraws without stroke distortion or clearing when the tablet rotates on the receiving dock.
@@ -181,11 +195,11 @@ $ npm test
   - All 38 automated tests passing with 0 failures (`npm test`).
   - Verified `npm run lint` (`tsc --noEmit`) -> 0 errors.
   - Verified `compile_applet` -> SUCCESS.
-- **Real Browser Acceptance Testing via Playwright CLI (`playwright-cli`)**:
-  - Verified Tablet Portrait (768x1024) and Tablet Landscape (1024x768) with `scrollWidth <= innerWidth` -> `true` (`overflow: false`).
-  - Real screenshots captured and saved:
-    - `/.playwright-cli/tablet-portrait-768x1024.png`: Verified dock receipt form, input grids, photo evidence buttons, and signature pad on iPad portrait.
-    - `/.playwright-cli/tablet-landscape-1024x768.png`: Verified 1024x768 tablet landscape layout and responsive density.
+- **Real Browser Acceptance Testing Screenshots**:
+  - `/.playwright-cli/superadmin-users-tablet-portrait.png`
+  - `/.playwright-cli/superadmin-users-tablet-landscape.png`
+  - `/.playwright-cli/tablet-portrait-768x1024.png`
+  - `/.playwright-cli/tablet-landscape-1024x768.png`
 
 ---
 
