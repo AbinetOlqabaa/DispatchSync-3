@@ -1,6 +1,6 @@
 # Build State — Business Dispatch & Delivery Reconciliation (DispatchBridge)
 
-- **Last Updated:** 2026-10-25T00:15:00Z
+- **Last Updated:** 2026-10-24T18:49:00-07:00
 - **Runtime / Platform:** Node.js v22.14.0 on Linux container with Express 4 backend & Vite 8 React 19 Frontend. Configured as an installable mobile-first Progressive Web App (PWA). *Note: Native Android build tooling (Gradle / Android SDK) is not supported in this runtime environment.*
 - **Stack:**
   - Backend: Node.js, Express 4, TypeScript, HMAC SHA-256 session tokens, timing-safe one-time bootstrap tokens, Fayda e-ID verification adapter, OTP gateway adapter, in-memory domain adapter (`sandboxStore`) with full multi-tenant isolation.
@@ -165,34 +165,27 @@ $ npm test
 
 ---
 
-## 5. Changes Made in This Session
-- **Fayda e-ID Verification Adapter (`src/server/adapters/faydaAdapter.ts`)**:
-  - Implemented 16-digit FAN and 12-digit FIN format validation with secure masking (`•••• •••• •••• 1234`).
-  - Added simulated national identity registry with `FAYDA_DEV_SIMULATED` badge in development and fail-closed behavior in production.
-- **Cryptographic OTP Challenge Adapter (`src/server/adapters/otpAdapter.ts`)**:
-  - Implemented 6-digit cryptographic OTP generation with purpose binding (`REGISTRATION`, `PASSWORD_RESET`, `PROFILE_CHANGE`).
-  - Enforced 5-minute expiry, 30-second cooldown, max 5 failed attempts with auto-revocation, and phone-based rate limiting.
-- **Identity & Authentication Routes (`src/server/routes/authRoutes.ts`)**:
-  - Enforced role validation prohibiting self-registration of `SUPER_ADMIN`.
-  - Added `/api/auth/register/initiate`, `/api/auth/register/complete`, `/api/auth/login-mobile`, `/api/auth/password-reset/initiate`, `/api/auth/password-reset/complete`, `/api/auth/profile`, and `/api/auth/profile/photo`.
-- **Platform Administrator User Governance (`src/server/routes/adminRoutes.ts`)**:
-  - Added `/api/admin/users` endpoints supporting pagination, search, role filtering, and status filtering.
-  - Implemented account suspension requiring audited justification, account reactivation, and last super-admin lockout protection.
-- **Frontend Authentication & Modal Enhancements (`src/pages/auth/AuthModal.tsx` & `src/components/auth/ProfileModal.tsx`)**:
-  - Two-step Fayda registration modal with live OTP entry, FAN/FIN validation, and country prefix picker.
-  - Profile modal with sticky header, visible close button, photo upload with 2MB validation, and password change with step-up OTP challenge.
-- **Tablet First-Class Navigation & User Governance UI (`src/pages/dashboards/SuperAdminDashboard.tsx`)**:
-  - Integrated dedicated User Administration & Roles tab displaying masked FAN/FIN, verified phone numbers, and action triggers.
-  - Optimized search input and role/status dropdowns with responsive wrapping on tablet portrait (768px-820px) and full-width container on tablet landscape (1024px).
-- **Automated Test Suite Expansion (`test/runTests.ts`)**:
-  - Expanded test suite from 28 to 38 comprehensive automated acceptance tests covering all Fayda, OTP, registration, recovery, and admin governance requirements.
-  - All 38 tests pass with 0 failures (`npm test`).
-- **Visual Browser Verification Across Matrix (`playwright-cli`)**:
-  - Captured and inspected live screenshots:
-    - `t-landscape-1024x768.png`: Verified tablet landscape navigation, metric cards, and filter controls.
-    - `t-admin-users-768x1024.png`: Verified Super Admin user governance table, search input, and masked FAN/FIN data.
-    - `t-admin-users-820x1180.png`: Verified tablet portrait layout at 820x1180.
-    - `t-profile-modal-768x1024.png`: Verified user profile modal, photo upload, and credential masking.
+- **Tablet First-Class Navigation & Responsive Ergonomics (`Navbar.tsx` & `App.tsx`)**:
+  - Fixed navigation breakpoint constraints so tablet portrait (768px-1023px) and tablet landscape (1024px-1279px) display first-class navigation tabs and controls.
+  - Added responsive bottom padding `pt-4 pb-24 md:pb-8` to `<main>` in `App.tsx` ensuring zero content overlap with mobile bottom navigation.
+- **Dynamic Orientation & Canvas Resizing in Signature Pad (`SignaturePad.tsx`)**:
+  - Implemented dynamic `resize` and `orientationchange` listener that preserves existing signature strokes via data URL, rescales the buffer with `devicePixelRatio`, and redraws without stroke distortion or clearing when the tablet rotates on the receiving dock.
+  - Increased touch height to `h-32 md:h-36` with touch-none action for stylus and finger signing.
+- **Reconciliation & Modal Tablet Layout Refinements**:
+  - Upgraded reconciliation dock inputs in `DispatchDetailPage.tsx` to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`, preventing field compression on tablet portrait.
+  - Upgraded line items in `CreateDispatchModal.tsx` to 2-row layout on mobile and single-row on tablet and desktop.
+  - Wrapped parsed dispatch preview table in `BulkUploadModal.tsx` with `overflow-x-auto min-w-[550px] sm:min-w-full`.
+- **Zero-Error Console Initialization Fix**:
+  - Resolved initial 401 unauthenticated request in `src/services/api.ts` constructor and `DispatchListPage.tsx`. Stale cached user tokens are cleared and unauthenticated callers bypass protected endpoints. Verified 0 browser console errors on startup.
+- **Automated Test Suite Execution (`test/runTests.ts`)**:
+  - All 38 automated tests passing with 0 failures (`npm test`).
+  - Verified `npm run lint` (`tsc --noEmit`) -> 0 errors.
+  - Verified `compile_applet` -> SUCCESS.
+- **Real Browser Acceptance Testing via Playwright CLI (`playwright-cli`)**:
+  - Verified Tablet Portrait (768x1024) and Tablet Landscape (1024x768) with `scrollWidth <= innerWidth` -> `true` (`overflow: false`).
+  - Real screenshots captured and saved:
+    - `/.playwright-cli/tablet-portrait-768x1024.png`: Verified dock receipt form, input grids, photo evidence buttons, and signature pad on iPad portrait.
+    - `/.playwright-cli/tablet-landscape-1024x768.png`: Verified 1024x768 tablet landscape layout and responsive density.
 
 ---
 

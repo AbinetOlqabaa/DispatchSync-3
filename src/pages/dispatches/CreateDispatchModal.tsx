@@ -351,7 +351,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                     key={index}
                     className="grid grid-cols-12 gap-2 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 items-center text-xs"
                   >
-                    <div className="col-span-2">
+                    <div className="col-span-4 sm:col-span-2">
                       <input
                         type="text"
                         value={item.sku}
@@ -361,7 +361,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                       />
                     </div>
 
-                    <div className="col-span-5">
+                    <div className="col-span-8 sm:col-span-5">
                       <input
                         type="text"
                         required
@@ -372,7 +372,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                       />
                     </div>
 
-                    <div className="col-span-2">
+                    <div className="col-span-5 sm:col-span-2">
                       <select
                         value={item.unit}
                         onChange={(e) => handleLineChange(index, 'unit', e.target.value)}
@@ -389,7 +389,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                       </select>
                     </div>
 
-                    <div className="col-span-2">
+                    <div className="col-span-5 sm:col-span-2">
                       <input
                         type="number"
                         required
@@ -402,7 +402,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                       />
                     </div>
 
-                    <div className="col-span-1 text-right">
+                    <div className="col-span-2 sm:col-span-1 text-right">
                       <button
                         type="button"
                         disabled={lines.length <= 1}

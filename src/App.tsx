@@ -179,7 +179,7 @@ function MainApp() {
       />
 
       {/* Main View Area - With max-w-full and overflow containment */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 max-w-full overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-24 md:pb-8 max-w-full overflow-x-hidden">
         {selectedDispatchId ? (
           <DispatchDetailPage
             dispatchId={selectedDispatchId}

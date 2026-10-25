@@ -838,7 +838,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                     <span className="text-slate-400 font-mono">Dispatched: {line.quantitySent} {line.unit}</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
                       <label className="block text-[11px] font-medium text-slate-300 mb-1">
                         Received Count ({line.unit}) *

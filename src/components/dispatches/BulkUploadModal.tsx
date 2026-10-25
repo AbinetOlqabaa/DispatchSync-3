@@ -340,8 +340,8 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
               )}
             </div>
 
-            <div className="border border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-800 rounded-xl overflow-x-auto max-h-56 overflow-y-auto scrollbar-thin">
+              <table className="w-full text-left text-xs min-w-[550px] sm:min-w-full">
                 <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="py-2 px-3">Reference</th>
