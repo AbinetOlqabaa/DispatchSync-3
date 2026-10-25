@@ -208,36 +208,36 @@ export const AuditPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+        <div className="overflow-x-auto rounded-xl border border-slate-800/80 scrollbar-thin">
+          <table className="w-full text-left text-xs min-w-[820px] lg:min-w-full">
+            <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/40 border-b border-slate-800">
               <tr>
-                <th className="pb-3 font-semibold">Event Timestamp</th>
-                <th className="pb-3 font-semibold">Actor & Role</th>
-                <th className="pb-3 font-semibold">Action</th>
-                <th className="pb-3 font-semibold">Entity</th>
-                <th className="pb-3 font-semibold">Audit Record Summary</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Event Timestamp</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Actor & Role</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Action</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap min-w-[120px]">Entity</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold min-w-[220px]">Audit Record Summary</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
               {filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-800/30">
-                  <td className="py-3 text-slate-400 whitespace-nowrap">
+                  <td className="px-3 sm:px-3.5 py-3 text-slate-400 whitespace-nowrap">
                     {new Date(log.timestamp).toLocaleString()}
                   </td>
-                  <td className="py-3 whitespace-nowrap">
+                  <td className="px-3 sm:px-3.5 py-3 whitespace-nowrap">
                     <span className="font-semibold text-slate-200">{log.actorName}</span>
                     <span className="text-[10px] text-slate-500 block font-sans">Role: {log.actorRole}</span>
                   </td>
-                  <td className="py-3">
+                  <td className="px-3 sm:px-3.5 py-3 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
                       {log.action}
                     </span>
                   </td>
-                  <td className="py-3 text-indigo-300 whitespace-nowrap">
+                  <td className="px-3 sm:px-3.5 py-3 text-indigo-300 whitespace-nowrap">
                     {log.entityType} ({log.entityId})
                   </td>
-                  <td className="py-3 text-slate-300 font-sans text-xs">
+                  <td className="px-3 sm:px-3.5 py-3 text-slate-300 font-sans text-xs">
                     {log.details}
                   </td>
                 </tr>

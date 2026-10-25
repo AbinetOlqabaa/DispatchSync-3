@@ -34,6 +34,7 @@ import { exportDispatchManifestPdf } from '../../utils/pdfExport.js';
 import { QrScannerModal } from '../../components/dispatches/QrScannerModal.js';
 import { SignaturePad } from '../../components/dispatches/SignaturePad.js';
 import { DamagePhotoUpload } from '../../components/dispatches/DamagePhotoUpload.js';
+import { DispatchTrackingMap } from '../../components/dispatches/DispatchTrackingMap.js';
 
 interface DispatchDetailPageProps {
   dispatchId: string;
@@ -367,7 +368,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
         </div>
 
         {/* Origin & Destination Snapshots */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
           <div className="bg-slate-800/40 p-3.5 rounded-xl border border-slate-800">
             <div className="text-slate-400 mb-1 flex items-center gap-1.5 font-semibold">
               <Warehouse className="w-3.5 h-3.5 text-indigo-400" />
@@ -389,7 +390,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
             </div>
           </div>
 
-          <div className="bg-slate-800/40 p-3.5 rounded-xl border border-slate-800">
+          <div className="bg-slate-800/40 p-3.5 rounded-xl border border-slate-800 sm:col-span-2 lg:col-span-1">
             <div className="text-slate-400 mb-1 flex items-center gap-1.5 font-semibold">
               <Truck className="w-3.5 h-3.5 text-blue-400" />
               <span>Carrier & Driver</span>
@@ -457,6 +458,12 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Live Map & Geo-Coordinates Tracking Component */}
+      <DispatchTrackingMap
+        dispatch={dispatch}
+        onTelemetryUpdate={(updated) => setDispatch(updated)}
+      />
 
       {actionSuccess && (
         <div className="p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2">
@@ -674,7 +681,12 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
           </h2>
           {canReconcile && !isReconciling && (
             <button
-              onClick={() => setIsReconciling(true)}
+              onClick={() => {
+                setIsReconciling(true);
+                setTimeout(() => {
+                  document.getElementById('reconciliation-form-section')?.scrollIntoView({ behavior: 'smooth' });
+                }, 50);
+              }}
               className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-md shadow-amber-600/20"
             >
               Record Dock Receipt & Reconciliation
@@ -682,39 +694,39 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+        <div className="overflow-x-auto rounded-xl border border-slate-800/80 scrollbar-thin">
+          <table className="w-full text-left text-xs min-w-[780px] lg:min-w-full">
+            <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/40 border-b border-slate-800">
               <tr>
-                <th className="pb-3 font-semibold">SKU</th>
-                <th className="pb-3 font-semibold">Item Description</th>
-                <th className="pb-3 font-semibold text-right">Dispatched</th>
-                <th className="pb-3 font-semibold text-right">Received</th>
-                <th className="pb-3 font-semibold text-right">Shortfall</th>
-                <th className="pb-3 font-semibold">Condition</th>
-                <th className="pb-3 font-semibold">Discrepancy Category</th>
-                <th className="pb-3 font-semibold">Notes</th>
+                <th className="px-3.5 py-3 font-semibold whitespace-nowrap">SKU</th>
+                <th className="px-3.5 py-3 font-semibold whitespace-nowrap">Item Description</th>
+                <th className="px-3.5 py-3 font-semibold text-right whitespace-nowrap">Dispatched</th>
+                <th className="px-3.5 py-3 font-semibold text-right whitespace-nowrap">Received</th>
+                <th className="px-3.5 py-3 font-semibold text-right whitespace-nowrap">Shortfall</th>
+                <th className="px-3.5 py-3 font-semibold whitespace-nowrap">Condition</th>
+                <th className="px-3.5 py-3 font-semibold whitespace-nowrap">Discrepancy Category</th>
+                <th className="px-3.5 py-3 font-semibold whitespace-nowrap">Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {dispatch.lines.map((line) => (
                 <tr key={line.id} className="hover:bg-slate-800/30">
-                  <td className="py-3 text-slate-400">{line.sku}</td>
-                  <td className="py-3 font-sans font-medium text-slate-200">{line.itemName}</td>
-                  <td className="py-3 text-right text-slate-200 font-bold">
+                  <td className="px-3.5 py-3 text-slate-400 whitespace-nowrap">{line.sku}</td>
+                  <td className="px-3.5 py-3 font-sans font-medium text-slate-200">{line.itemName}</td>
+                  <td className="px-3.5 py-3 text-right text-slate-200 font-bold whitespace-nowrap">
                     {line.quantitySent} {line.unit}
                   </td>
-                  <td className="py-3 text-right font-bold text-emerald-400">
+                  <td className="px-3.5 py-3 text-right font-bold text-emerald-400 whitespace-nowrap">
                     {line.quantityReceived !== undefined ? `${line.quantityReceived} ${line.unit}` : '—'}
                   </td>
-                  <td className="py-3 text-right font-bold">
+                  <td className="px-3.5 py-3 text-right font-bold whitespace-nowrap">
                     {line.lossQty && line.lossQty > 0 ? (
                       <span className="text-rose-400">-{line.lossQty} {line.unit}</span>
                     ) : (
                       <span className="text-slate-500">0</span>
                     )}
                   </td>
-                  <td className="py-3 font-sans">
+                  <td className="px-3.5 py-3 font-sans whitespace-nowrap">
                     {line.condition ? (
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         line.condition === 'DAMAGED'
@@ -727,7 +739,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                       '—'
                     )}
                   </td>
-                  <td className="py-3 font-sans">
+                  <td className="px-3.5 py-3 font-sans whitespace-nowrap">
                     {line.discrepancyType && line.discrepancyType !== 'NONE' ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-950 text-rose-300 border border-rose-800">
                         {line.discrepancyType}
@@ -736,7 +748,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
                       <span className="text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="py-3 font-sans text-slate-400 text-[11px]">{line.notes || '—'}</td>
+                  <td className="px-3.5 py-3 font-sans text-slate-400 text-[11px]">{line.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -794,7 +806,7 @@ export const DispatchDetailPage: React.FC<DispatchDetailPageProps> = ({
 
       {/* Form: Record Dock Receipt (if opened by user) */}
       {isReconciling && canReconcile && (
-        <div className="bg-slate-900 border border-amber-800/80 rounded-2xl p-6 shadow-xl space-y-4">
+        <div id="reconciliation-form-section" className="bg-slate-900 border border-amber-800/80 rounded-2xl p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <FileCheck className="w-5 h-5 text-amber-400" />

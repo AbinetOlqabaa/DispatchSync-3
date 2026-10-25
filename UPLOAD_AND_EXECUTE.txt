@@ -1,0 +1,12 @@
+BUSINESS DISPATCH APP — IDENTITY UPDATE PACK
+
+1. Back up/export your current working project.
+2. Extract this ZIP at the project root, merging its .ai directory with the existing .ai directory.
+   Do not delete existing context files. The IDENTITY_* filenames minimize collisions.
+3. Upload/open the updated project in Google AI Studio.
+4. Paste the contents of .ai/IDENTITY_UPDATE_EXECUTE.md into the agent.
+5. Require the agent to inspect current code, implement in place, run actual tests and update .ai/BUILD_STATE.md.
+6. If interrupted, export the whole updated project and use .ai/IDENTITY_SESSION_CONTINUATION_PROMPT.md in the next authorized session.
+
+SECURITY NOTE:
+Do not put fixed administrator passwords or production OTPs in source code. Use one-time server-side super-admin provisioning. Fayda must be treated as a development simulation until a real authorized integration is configured and tested. FAN/FIN must not be exposed in dashboards, logs, URLs or client storage.

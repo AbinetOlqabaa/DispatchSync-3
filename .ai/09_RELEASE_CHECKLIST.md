@@ -1,46 +1,39 @@
-# Release and deployment checklist
+# Phase 9 — Release and Staging Checklist
 
-## Build and code quality
-- [ ] Build/type-check/lint passes in the actual project environment.
-- [ ] Relevant unit and integration tests pass.
-- [ ] Critical end-to-end flows verified or clearly marked not run.
-- [ ] No hardcoded secrets or test credentials.
-- [ ] Dependencies reviewed; lockfile committed if applicable.
-- [ ] Error, loading, empty and permission-denied states tested.
-- [ ] Mobile layout, keyboard/screen-reader basics, and horizontal overflow tested.
-- [ ] Demo data and mock adapters clearly separated from production data.
+## Build and quality
+- [ ] Install from lockfile using documented command.
+- [ ] Run lint/typecheck, unit/integration tests and production build; record exact output and exit status.
+- [ ] Verify supported runtime and PWA install/update behavior. Do not claim native APK unless built and tested.
+- [ ] Test supported browsers and target tablet/mobile/desktop viewports.
 
-## Identity and security
-- [ ] Authentication providers configured in their real console.
-- [ ] Email/phone verification behavior confirmed.
-- [ ] Super-admin provisioned using secure server-side procedure.
-- [ ] Database rules and server authorization deployed and tested.
-- [ ] Rate limits, abuse protections and App Check configured where supported.
-- [ ] Secret storage and least-privilege service identities configured.
-- [ ] Recovery, session revocation and account suspension tested.
-- [ ] Privacy notice, retention/deletion and incident contact reviewed.
+## Identity, data and security
+- [ ] Real authentication provider configured; recovery and session behavior verified.
+- [ ] Production database and restrictive rules configured; no in-memory store used as production persistence.
+- [ ] Server-side authorization and tenant isolation tested.
+- [ ] Secrets supplied through secure environment; no secrets in repository/client bundle.
+- [ ] Backup, restore, retention, deletion and incident-response procedures defined.
+- [ ] Evidence storage is private and access-controlled if enabled.
+- [ ] Super-admin bootstrap/rotation/recovery documented and tested.
 
-## Data and operations
-- [ ] Production database and indexes configured.
-- [ ] Backup/restore plan documented and restore tested.
-- [ ] Monitoring, alerting and safe structured logs configured.
-- [ ] Notification providers configured; delivery states tested.
-- [ ] File storage rules and size/type limits configured if attachments exist.
-- [ ] Timezone and date display confirmed.
-- [ ] Export/report permissions tested.
-- [ ] Migration/rollback plan documented.
+## Integrations and operations
+- [ ] Email/SMS/push/WhatsApp providers configured only where needed; provider delivery outcomes verified.
+- [ ] Monitoring, structured logs, alerting, health checks and error tracking configured.
+- [ ] Rate limits, abuse protection and operational support procedures reviewed.
+- [ ] Data migration and rollback plan documented.
+- [ ] Privacy notice, terms, consent and applicable local legal/privacy review completed.
+- [ ] Domain, TLS, CORS/CSP, PWA caching and deployment settings reviewed.
 
-## Platform and release
-- [ ] Confirmed whether deliverable is native Android, PWA, or another platform.
-- [ ] If native Android: build/signing, package ID, permissions, privacy disclosures and device testing completed.
-- [ ] If PWA: manifest, icons, HTTPS, service worker behavior and installability tested; do not call it a native APK.
-- [ ] Production deployment performed by authorized operator.
-- [ ] Actual deployment URL/build artifact recorded only after verified.
-- [ ] Local legal/privacy review completed for operating countries and communication channels.
+## Product quality
+- [ ] All role workflows tested end to end.
+- [ ] No starter/kernel placeholder content or unnecessary demo UI remains in normal production experience.
+- [ ] Demo data and sandbox status are unmistakable in development/staging and absent or disabled in production.
+- [ ] Responsive acceptance passed at mobile, tablet portrait, tablet landscape and desktop.
+- [ ] Accessibility and keyboard/touch interaction reviewed.
+- [ ] Known defects and limitations disclosed.
 
-## Release verdict
-Use exactly one:
-- NOT READY — critical implementation or security gaps remain.
-- READY FOR STAGING — core flows work but production setup/review remains.
-- READY FOR PRODUCTION REVIEW — tests and setup are verified, but final human/security/legal approval remains.
-Do not declare production-ready solely because the UI looks complete.
+## Verdict rules
+Choose one and justify it with evidence:
+- NOT READY — build, critical workflow or critical security gate fails.
+- READY FOR STAGING — build/tests pass, but production credentials, provider setup, operational controls, legal review or other external staging gates remain.
+- READY FOR PRODUCTION REVIEW — release gates appear satisfied, but human security/privacy/operational review is still required.
+Never claim “production ready” solely because demo tests pass.

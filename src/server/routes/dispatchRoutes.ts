@@ -58,6 +58,59 @@ router.get('/public/:shareToken', async (req, res) => {
   }
 });
 
+// Public partner dock receipt & sign-off submission via unguessable share token
+router.post('/public/:shareToken/reconcile', async (req, res) => {
+  try {
+    const { shareToken } = req.params;
+    const dispatch = await sandboxStore.getDispatchByShareToken(shareToken);
+
+    if (!dispatch) {
+      res.status(404).json({ error: 'Delivery manifest not found or link has expired.' });
+      return;
+    }
+
+    const idempotencyKey = (req.headers['x-idempotency-key'] as string) || req.body.idempotencyKey;
+    const signerName = req.body.signoff?.signerName || `${dispatch.partnerName} Receiving Lead`;
+    const signerRole = req.body.signoff?.signerRole || 'Receiving Supervisor';
+
+    const actor: any = {
+      id: `usr_partner_link_${dispatch.partnerId}`,
+      email: dispatch.destinationSnapshot.contactPerson
+        ? `${dispatch.destinationSnapshot.contactPerson.toLowerCase().replace(/\s+/g, '.')}@partner.com`
+        : 'dock.receiving@partner.internal',
+      name: signerName,
+      phoneNumber: dispatch.destinationSnapshot.phone || '',
+      phoneVerified: false,
+      role: 'RECEIVER',
+      businessId: dispatch.partnerId,
+      businessName: dispatch.destinationSnapshot.partnerName,
+      memberships: [],
+      partnerId: dispatch.partnerId,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updated = await sandboxStore.recordReceiptReport(
+      dispatch.id,
+      {
+        ...req.body,
+        idempotencyKey,
+        signoff: {
+          ...req.body.signoff,
+          signerName,
+          signerRole,
+        },
+      },
+      actor
+    );
+
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to record dock receipt.' });
+  }
+});
+
 // Get dispatch by ID with strict tenant isolation check
 router.get('/:id', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
   try {
@@ -147,6 +200,26 @@ router.post('/:id/transit-scan', optionalAuthenticate, async (req: Authenticated
     res.json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to record transit scan.' });
+  }
+});
+
+// Update Live Telemetry Geo-Coordinates
+router.post('/:id/telemetry', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+    const { latitude, longitude, speedKmh, heading, checkpointName, source } = req.body;
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: 'Latitude and longitude are required.' });
+    }
+    const updated = await sandboxStore.updateDispatchTelemetry(
+      id,
+      { latitude, longitude, speedKmh, heading, checkpointName, source },
+      user
+    );
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to update delivery telemetry.' });
   }
 });
 

@@ -1,55 +1,25 @@
-# Testing strategy and acceptance tests
+# Phase 8 — Testing and Acceptance
+
+## Rules
+Inspect existing test tooling first. Reuse it. Never claim a command passed unless it was run in the current workspace. If a tool is unavailable, say so and give a manual alternative.
 
 ## Test layers
-Use the test tools available in the chosen stack. Prefer unit tests for domain rules, integration tests for APIs/database rules, and end-to-end tests for critical user journeys. If emulator/browser/device testing is unavailable, say so and give exact manual steps.
+- Unit: validation, quantity arithmetic/decimal precision, state transitions, permission helpers, locale formatting, FAN/FIN format validation and masking.
+- Integration: auth/session, membership authorization, dispatch creation, idempotency, view receipt, receipt submission, discrepancy review, notification outbox, audit, mobile auth, OTP challenge lifecycle, end-to-end registration with Fayda, forgot password recovery, and signed-in password change with step-up OTP.
+- Security: cross-tenant IDOR, unauthorized role actions, forged business IDs, mass assignment, expired/replayed invitation/share tokens, file access, export access, duplicate/replayed writes, public super-admin registration prevention, admin lockout protection, and suspension enforcement.
+- Admin Governance: `/api/admin/users` pagination, search, role filtering, status filtering, suspension with audited reason, and reactivation.
+- UI/component: validation feedback, loading/empty/error/retry states, navigation, responsive components, profile modal, photo upload, and tablet-first responsive layouts.
+- End-to-end: registration/sign-in → onboarding/business selection → partner/location → dispatch with multiple lines → submit/share → recipient authenticated detail view → proof-of-view → receipt report → sender review/resolution → audit and notifications.
+- Regression: all previously working features, including map/telemetry, scanner/checkpoints, PDF manifest, CSV import/export, analytics, languages and theme.
 
-## Unit tests
-- Quantity validation and decimal precision.
-- Reconciliation calculation for exact match, shortage, overage, damaged, lost, not received and unreported.
-- Dispatch state transition validity.
-- Role/membership permission decisions.
-- Timezone display conversion.
-- Notification status mapping.
-- Idempotency behavior.
+## Responsive test matrix
+At minimum check 390x844, 768x1024, 820x1180, 1024x768 and 1440x900. Prefer also 360x800, 1180x820 and 1280x800. Test every major route for both tablet orientations. Record routes, viewports, methods and results.
 
-## Security tests
-- Sender from Business A cannot read/update Business B's dispatch.
-- Receiver from unrelated Business C cannot read a dispatch.
-- Receiver cannot change original sent quantities or sender identity.
-- Sender cannot forge receiver view receipt.
-- Public user cannot grant self a role or make self super-admin.
-- Client cannot write audit events or privileged fields.
-- Expired/replayed invitation and reset tokens fail.
-- Unauthorized export and attachment access fail.
-
-## Integration tests
-- Registration/sign-in/reset flow using provider emulator or configured test account.
-- Business membership and role assignment.
-- Create dispatch with multiple lines.
-- Notification failure does not corrupt dispatch.
-- Recipient opens detail and view receipt is recorded once correctly.
-- Receiver submits report; server calculates discrepancies.
-- Sender disputes/acknowledges and resolves.
-- Retry after timeout does not duplicate records.
-- Pagination and filters return only authorized data.
-
-## End-to-end acceptance scenarios
-A. Owner creates business, adds partner and location, adds sender/receiver membership.
-B. Sender creates dispatch with two or more item lines, reviews and submits.
-C. Receiver gets in-app notification, opens detail; system records a genuine view timestamp.
-D. Receiver reports one exact line and one shortage/damaged line.
-E. Sender sees discrepancy and responds; parties reach a recorded resolution.
-F. Admin suspends a test user and action is audited; user cannot continue privileged actions.
-G. Unauthorized users attempting cross-tenant IDs receive safe denial.
-H. Network failure and duplicate taps do not create duplicate dispatches/reports.
-I. Mobile layout works at narrow viewport, with bounded scroll and pagination.
-J. Password reset and sign-out/session expiration work with configured auth provider.
-
-## Verification reporting
-For each test group record:
-- exact command or manual steps;
-- environment (unit/emulator/browser/device);
-- result: PASS, FAIL, BLOCKED, or NOT RUN;
-- failure details and fixes;
-- limitations.
-Never label a test PASS based solely on code inspection.
+## Release gates
+- Lint/typecheck/build passes (`npm run lint` -> 0 errors, `compile_applet` -> SUCCESS).
+- Automated tests pass: **38/38 PASS (0 failed)** via `npm test` (`tsx test/runTests.ts`).
+- No known critical security issue left unacknowledged.
+- All required flows work with real configured persistence, or sandbox-only limitations are clearly documented.
+- No false provider delivery claims; Fayda and OTP dev simulations are transparently labeled.
+- Tablet layouts pass the viewport matrix (768x1024, 820x1180 portrait; 1024x768, 1180x820 landscape) with no horizontal overflow.
+- No critical flow is implemented as a fake success.

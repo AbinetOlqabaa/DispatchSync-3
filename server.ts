@@ -12,6 +12,7 @@ import auditRoutes from './src/server/routes/auditRoutes.js';
 import systemRoutes from './src/server/routes/systemRoutes.js';
 import locationRoutes from './src/server/routes/locationRoutes.js';
 import notificationRoutes from './src/server/routes/notificationRoutes.js';
+import adminRoutes from './src/server/routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ async function startServer() {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/audit', auditRoutes);
   app.use('/api/system', systemRoutes);
+  app.use('/api/admin', adminRoutes);
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {

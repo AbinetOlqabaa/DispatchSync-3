@@ -11,7 +11,8 @@
 - Define indexes for actual query patterns and document deployment/setup requirements.
 
 ## Suggested entities
-- `User`: id, displayName, email, phoneE164, phoneVerified, status, createdAt, updatedAt, lastLoginAt.
+- `User`: id (`usr_...`), displayName, email, phoneE164, phoneVerified, maskedPhone, faydaFan (masked), faydaFin (masked), faydaVerified, faydaVerificationMethod, avatarUrl, status (`ACTIVE` | `SUSPENDED`), suspendedReason, suspendedAt, suspendedBy, createdAt, updatedAt, lastLoginAt.
+- `OtpChallenge`: id (`otp_...`), phoneNumber, codeHash (SHA-256), purpose (`REGISTRATION` | `PASSWORD_RESET` | `PROFILE_CHANGE`), attempts, maxAttempts (5), expiresAt, resendAvailableAt, revoked, createdAt.
 - `Business`: id, legalOrDisplayName, registrationNumber optional, countryCode, address, status, ownerUserIds, createdAt.
 - `Membership`: id, userId, businessId, role, status, permissions/overrides if needed, invitedBy, createdAt.
 - `Partner`: id, owningBusinessId, partnerBusinessId optional, displayName, contactName, email optional, phoneE164 optional, countryCode, region, city, addressLines, postalCode optional, notes, verificationStatus, createdAt.

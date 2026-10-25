@@ -2,10 +2,12 @@ import React from 'react';
 
 interface LoadingSpinnerProps {
   label?: string;
+  text?: string;
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ label = 'Loading...', size = 'md' }) => {
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ label, text, size = 'md' }) => {
+  const displayLabel = text || label || 'Loading...';
   const sizeMap = {
     sm: 'w-4 h-4 border-2',
     md: 'w-8 h-8 border-3',
@@ -17,8 +19,8 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ label = 'Loading
       <div
         className={`${sizeMap[size]} border-slate-700 border-t-indigo-500 rounded-full animate-spin`}
       />
-      {label && <p className="text-sm text-slate-400 font-medium">{label}</p>}
-      <span className="sr-only">{label}</span>
+      {displayLabel && <p className="text-sm text-slate-400 font-medium">{displayLabel}</p>}
+      <span className="sr-only">{displayLabel}</span>
     </div>
   );
 };

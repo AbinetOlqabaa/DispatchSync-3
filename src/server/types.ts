@@ -20,6 +20,7 @@ export interface AuthSession {
 
 export interface IAuthAdapter {
   login(email: string, password: string): Promise<AuthSession>;
+  loginWithMobile?(phoneNumber: string, password: string): Promise<AuthSession>;
   register(payload: {
     email: string;
     password: string;

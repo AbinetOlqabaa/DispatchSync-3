@@ -463,12 +463,12 @@ export const LocationsMapView: React.FC<LocationsMapViewProps> = ({
         {/* Right Inspection Drawer / Points List */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-4">
           <div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                <Layers className="w-4 h-4 text-sky-400" />
-                <span>Geospatial Directory</span>
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-white min-w-0">
+                <Layers className="w-4 h-4 text-sky-400 shrink-0" />
+                <span className="truncate">Geospatial Directory</span>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-400 shrink-0">
                 {filteredPoints.length} Points
               </span>
             </div>

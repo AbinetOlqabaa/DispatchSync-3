@@ -17,6 +17,7 @@ interface AuthContextType {
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
   switchBusiness: (businessId: string) => Promise<void>;
+  createBusiness: (payload: any) => Promise<void>;
   quickLoginDemoRole: (role: UserRole) => Promise<void>;
   signIn: (emailOrPayload: any, maybePassword?: string) => Promise<void>;
   signUp: (payload: any) => Promise<void>;
@@ -25,6 +26,8 @@ interface AuthContextType {
   verifyPhoneOtp: (code: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; resetTokenPreview?: string }>;
   bootstrapSuperAdmin: (secret: string, payload: any) => Promise<{ success: boolean; user: User }>;
+  updateProfile: (data: { name?: string; avatarUrl?: string }) => Promise<User>;
+  removeProfilePhoto: () => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -134,6 +137,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await fetchNotifs();
   };
 
+  const createBusiness = async (payload: any) => {
+    const res = await api.createBusiness(payload);
+    setUser(res.user);
+    await fetchNotifs();
+  };
+
   const quickLoginDemoRole = async (role: UserRole) => {
     const roleCreds: Record<UserRole, { email: string }> = {
       BUSINESS_OWNER: { email: 'owner@apexsupply.com' },
@@ -158,6 +167,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return api.bootstrapSuperAdmin({ bootstrapSecret: secret, ...payload });
   };
 
+  const updateProfile = async (data: { name?: string; avatarUrl?: string }) => {
+    const updated = await api.updateProfile(data);
+    setUser(updated);
+    return updated;
+  };
+
+  const removeProfilePhoto = async () => {
+    const updated = await api.removeProfilePhoto();
+    setUser(updated);
+    return updated;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -175,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         markNotificationAsRead,
         markAllNotificationsAsRead,
         switchBusiness,
+        createBusiness,
         quickLoginDemoRole,
         signIn: login,
         signUp: register,
@@ -183,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyPhoneOtp: verifyPhone,
         requestPasswordReset,
         bootstrapSuperAdmin,
+        updateProfile,
+        removeProfilePhoto,
       }}
     >
       {children}

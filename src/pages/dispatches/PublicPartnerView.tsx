@@ -12,11 +12,15 @@ import {
   ShieldCheck,
   UserCheck,
   Package,
+  Camera,
+  PenTool,
 } from 'lucide-react';
-import { DiscrepancyType, Dispatch, ItemCondition } from '../../types/dispatch.js';
+import { CargoEvidence, DiscrepancyType, Dispatch, ItemCondition } from '../../types/dispatch.js';
 import { api } from '../../services/api.js';
 import { StatusBadge } from '../../components/common/StatusBadge.js';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.js';
+import { SignaturePad } from '../../components/dispatches/SignaturePad.js';
+import { DamagePhotoUpload } from '../../components/dispatches/DamagePhotoUpload.js';
 
 interface PublicPartnerViewProps {
   shareToken: string;
@@ -37,11 +41,14 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
       condition: ItemCondition;
       discrepancyType: DiscrepancyType;
       notes: string;
+      evidence?: CargoEvidence[];
     }>
   >([]);
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('Receiving Manager');
   const [comments, setComments] = useState('');
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [evidencePhotos, setEvidencePhotos] = useState<CargoEvidence[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -98,17 +105,41 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
     setIsSubmitting(true);
 
     try {
-      const updated = await api.recordReceipt(dispatch.id, {
-        lines: lineReceipts,
-        signoff: {
-          signerName: signerName.trim() || 'Verified Receiver',
-          signerRole: signerRole.trim() || 'Dock Lead',
-          comments: comments.trim(),
-        },
-      });
+      const payloadLines = lineReceipts.map((l) => ({
+        ...l,
+        evidence:
+          evidencePhotos.length > 0 && (l.condition === 'DAMAGED' || (l.discrepancyType && l.discrepancyType !== 'NONE'))
+            ? evidencePhotos
+            : l.evidence || [],
+      }));
+
+      let updated: Dispatch;
+      try {
+        updated = await api.recordPublicReceipt(shareToken, {
+          lines: payloadLines,
+          signoff: {
+            signerName: signerName.trim() || 'Verified Receiver',
+            signerRole: signerRole.trim() || 'Dock Lead',
+            comments: comments.trim(),
+            signatureSvgOrBase64: signatureDataUrl || undefined,
+          },
+        });
+      } catch (pubErr) {
+        // Fallback for authenticated receiver
+        updated = await api.recordReceipt(dispatch.id, {
+          lines: payloadLines,
+          signoff: {
+            signerName: signerName.trim() || 'Verified Receiver',
+            signerRole: signerRole.trim() || 'Dock Lead',
+            comments: comments.trim(),
+            signatureSvgOrBase64: signatureDataUrl || undefined,
+          },
+        });
+      }
+
       setDispatch(updated);
       setIsVerifying(false);
-      setSubmitSuccess('Official delivery receipt verified! Shipper has been notified and audit entry recorded.');
+      setSubmitSuccess('Official delivery receipt verified! Shipper has been notified, signature locked, and audit entry recorded.');
     } catch (err: any) {
       setSubmitError(err.message || 'Failed to submit receipt confirmation.');
     } finally {
@@ -280,19 +311,88 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
 
       {/* Verified Certificate if received */}
       {isAlreadyReceived && dispatch.receiverSignoff && (
-        <div className="bg-slate-900 border border-emerald-900/60 rounded-2xl p-5 text-xs space-y-2">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Delivery Acknowledged & Signed</span>
+        <div className="bg-slate-900 border border-emerald-900/60 rounded-2xl p-5 text-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Delivery Acknowledged & Signed</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded-lg">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Dock Record Locked</span>
+            </div>
           </div>
-          <div className="text-slate-300">
-            Signer: <strong className="text-white">{dispatch.receiverSignoff.signerName}</strong> (
-            {dispatch.receiverSignoff.signerRole}) on{' '}
-            {new Date(dispatch.receiverSignoff.signedAt).toLocaleString()}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-slate-300">
+            <div>
+              <span className="text-slate-500 block text-[11px]">Signer Name & Role:</span>
+              <strong className="text-white">{dispatch.receiverSignoff.signerName}</strong>
+              <div className="text-[11px] text-slate-400">{dispatch.receiverSignoff.signerRole}</div>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[11px]">Signed At:</span>
+              <span className="text-slate-200">{new Date(dispatch.receiverSignoff.signedAt).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[11px]">Comments:</span>
+              <span className="text-slate-300 italic">{dispatch.receiverSignoff.comments || 'No remarks recorded.'}</span>
+            </div>
           </div>
-          {dispatch.receiverSignoff.comments && (
-            <div className="text-slate-400 italic">"{dispatch.receiverSignoff.comments}"</div>
+
+          {dispatch.receiverSignoff.signatureSvgOrBase64 && (
+            <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">
+                  Verified Digital Glass Signature
+                </span>
+                <div className="mt-1 bg-slate-950 p-2 rounded-xl border border-slate-800 inline-block">
+                  <img
+                    src={dispatch.receiverSignoff.signatureSvgOrBase64}
+                    alt="Receiver Signature"
+                    className="h-14 w-auto max-w-xs object-contain"
+                  />
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Enforceable cryptographic proof-of-delivery captured on receiving glass terminal.
+              </div>
+            </div>
           )}
+        </div>
+      )}
+
+      {/* Recorded Discrepancies if received with claims */}
+      {isAlreadyReceived && dispatch.discrepancyCases && dispatch.discrepancyCases.length > 0 && (
+        <div className="bg-slate-900 border border-rose-900/60 rounded-2xl p-5 text-xs space-y-3">
+          <div className="flex items-center gap-2 text-rose-400 font-bold">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Recorded Discrepancy & Claims ({dispatch.discrepancyCases.length})</span>
+          </div>
+          <div className="space-y-2">
+            {dispatch.discrepancyCases.map((c) => (
+              <div key={c.id} className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">{c.itemName}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
+                    {c.type} (-{c.shortfallQuantity})
+                  </span>
+                </div>
+                {c.notes && <p className="text-[11px] text-slate-400">Note: {c.notes}</p>}
+                {c.evidence && c.evidence.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                    {c.evidence.map((ev) => (
+                      <div key={ev.id} className="bg-slate-950 rounded-lg border border-slate-700 overflow-hidden">
+                        <img src={ev.dataUrl} alt={ev.fileName} className="h-16 w-full object-cover" />
+                        <div className="p-1 text-[9px] text-slate-400 truncate">
+                          <span className="text-slate-200 block truncate">{ev.fileName}</span>
+                          <span className="font-mono text-[8px] text-emerald-400">SHA: {ev.sha256Hash?.substring(0, 8)}...</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -305,7 +405,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
           </p>
           <button
             onClick={() => setIsVerifying(true)}
-            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-amber-600/30 cursor-pointer"
+            className="px-6 py-3 min-h-[44px] bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-amber-600/30 cursor-pointer"
           >
             Start Dock Count & Sign Off
           </button>
@@ -316,7 +416,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
         <div className="bg-slate-900 border border-amber-700/80 rounded-2xl p-6 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-white">Confirm Dock Count & Sign Off</h3>
-            <button onClick={() => setIsVerifying(false)} className="text-xs text-slate-400 hover:text-white cursor-pointer">
+            <button onClick={() => setIsVerifying(false)} className="text-xs text-slate-400 hover:text-white cursor-pointer min-h-[44px] px-2 flex items-center">
               Cancel
             </button>
           </div>
@@ -337,7 +437,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
                     <span className="text-slate-400 font-mono">Dispatched: {line.quantitySent} {line.unit}</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-slate-400 mb-1">Received ({line.unit})</label>
                       <input
@@ -346,7 +446,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
                         step="any"
                         value={lineReceipts[idx]?.quantityReceived || 0}
                         onChange={(e) => handleLineCountChange(idx, parseFloat(e.target.value) || 0)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"
                       />
                     </div>
 
@@ -359,7 +459,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
                           updated[idx].condition = e.target.value as ItemCondition;
                           setLineReceipts(updated);
                         }}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
                       >
                         <option value="GOOD">Good / Intact</option>
                         <option value="DAMAGED">Damaged</option>
@@ -377,7 +477,7 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
                           updated[idx].discrepancyType = e.target.value as DiscrepancyType;
                           setLineReceipts(updated);
                         }}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
                       >
                         <option value="NONE">None (Full Count)</option>
                         <option value="SHORTAGE">Shortage</option>
@@ -399,13 +499,24 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
                           setLineReceipts(updated);
                         }}
                         placeholder="e.g. 2 boxes crushed"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
                       />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Evidence photos if any discrepancy is indicated */}
+            {lineReceipts.some((l) => l.condition === 'DAMAGED' || (l.discrepancyType && l.discrepancyType !== 'NONE')) && (
+              <div className="pt-2">
+                <DamagePhotoUpload
+                  evidence={evidencePhotos}
+                  onChange={(ev) => setEvidencePhotos(ev)}
+                  maxFiles={4}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <div>
@@ -443,18 +554,26 @@ export const PublicPartnerView: React.FC<PublicPartnerViewProps> = ({ shareToken
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            {/* Digital Dock Sign-off Canvas */}
+            <div className="pt-2">
+              <SignaturePad
+                signerName={signerName || 'Receiving Dock Lead'}
+                onSignatureChange={(sig) => setSignatureDataUrl(sig)}
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3 pt-3">
               <button
                 type="button"
                 onClick={() => setIsVerifying(false)}
-                className="px-4 py-2 text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="px-4 py-2.5 text-xs text-slate-400 hover:text-white cursor-pointer min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-800/60"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-lg shadow-emerald-600/30"
+                className="px-6 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-lg shadow-emerald-600/30 flex items-center justify-center"
               >
                 {isSubmitting ? 'Submitting receipt...' : 'Submit Official Dock Sign-Off'}
               </button>

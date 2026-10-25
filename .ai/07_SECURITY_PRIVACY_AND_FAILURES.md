@@ -1,40 +1,28 @@
-# Security, privacy and graceful failure requirements
+# Phase 7 — Security, Privacy, Validation and Failure Handling
 
-## Threat model
-Protect against cross-tenant data access, IDOR, privilege escalation, fake view receipts, forged receipt reports, mass assignment, duplicate requests, spam/invitation abuse, credential attacks, malicious uploads, insecure exports, and secrets leakage.
+## Threat model and isolation
+Inspect actual auth, APIs, database rules, storage, file uploads, exports, share links, background jobs and secrets. Document trust boundaries and likely abuse paths. Deny by default. Enforce tenant/resource authorization server-side and in database rules where applicable; UI hiding is not security.
 
 ## Required controls
-- Server-side authorization and restrictive database security rules, default deny.
-- Validate every input on the server with typed schemas and explicit allowed fields.
-- Normalize phone/email and validate quantities, units, timestamps, country/address fields.
-- Protect tenant boundaries on all reads and writes.
-- Rate limit login, reset, invitation, dispatch submission and notification endpoints where supported.
-- Use secure provider-managed sessions, secure cookies where applicable, CSRF protection when relevant, and appropriate CORS configuration.
-- Use App Check/device attestation where supported, but do not treat it as a replacement for authorization.
-- Apply least privilege to service accounts and deployment identities.
-- Keep secrets in managed secret storage/environment configuration.
-- Avoid exposing internal stack traces, database paths, tokens or personal information in client errors.
-- Use safe logging, correlation IDs and redaction.
-- Validate file type, size and authorization; do not accept executable files as evidence. Use signed/short-lived access URLs when supported.
-- Protect exports with authorization, pagination/limits and audit records.
-- Add dependency/security checks where tooling supports them.
-- Provide privacy notice, data retention/deletion policy, contact and consent where appropriate.
-- Do not assume compliance with any country’s laws; document that local legal/privacy review is required.
+- Validate and normalize all untrusted input at server boundaries using the stack's schema-validation approach.
+- Protect against IDOR, cross-tenant data leaks, privilege escalation, mass assignment, injection, unsafe file uploads, replay/duplicate submissions and race conditions.
+- Sensitive national identity data protection: Fayda FAN (16 digits) and FIN (12 digits) are masked (`•••• •••• •••• 1234`), never logged, never returned in API payloads, never stored unencrypted, and never shown on dashboard cards.
+- OTP Challenge Security: 6-digit cryptographic OTPs with SHA-256 storage, single-use enforcement, 5-minute expiry, 30s resend cooldown, max 5 attempts with auto-revocation, and phone-based rate limits.
+- Account suspension: Suspended users are denied authentication, and active session tokens are rejected immediately at the auth middleware level.
+- Lockout protection: Platform prevents deleting, suspending, or demoting the last remaining active Super Administrator.
+- File upload restrictions: Profile photos limited to 2MB, validated for safe image MIME types (JPEG, PNG, WebP), stored securely with default initials fallback.
+- Use idempotency/transaction guards for consequential writes.
+- Keep secrets only in supported secret management/server environment; provide `.env.example` placeholders only.
+- Use secure session/cookie/token practices, expiry/revocation where supported, CSRF protection where relevant, rate limiting and abuse controls where supported.
+- Limit upload types/size, verify ownership/access on download, and avoid public evidence URLs unless explicitly safe.
+- Add security headers and restrictive CORS/Content Security Policy where compatible with deployment.
+- Avoid sensitive values in logs/errors; return useful but non-revealing error messages.
+- Apply pagination and bounded filters to list/export endpoints.
+- Use UTC/server timestamps, explicit retention/deletion/backup behavior and minimal data collection.
+- Offline data must be labeled unsynced and handle conflicts; do not promise unsupported offline capabilities.
 
-## Graceful failure
-- Use centralized error handling and user-friendly messages.
-- Distinguish validation, permission, not-found, conflict, rate-limit, network and server errors.
-- Retry only safe/idempotent operations automatically.
-- For timeouts after a possible commit, check transaction state before resubmitting.
-- Preserve form input after recoverable errors where safe.
-- Handle offline mode explicitly; do not show unsaved offline changes as synchronized.
-- Provide retry and support/correlation reference.
-- Prevent sensitive information from appearing in logs or error UI.
-- Add error boundaries for UI crashes where supported.
+## Failure behavior
+Every consequential action needs loading, success, failure, retry, and duplicate-submission behavior. Handle network loss, provider outage, expired session, stale form/version conflicts, missing configuration and permission denial honestly.
 
-## Data integrity
-- Use server timestamps and transactions for state transitions.
-- Use optimistic concurrency/version checks on edits.
-- Do not allow client to write privileged fields like roles, verified status, audit actor, reference code, server timestamps, or super-admin flags.
-- Maintain immutable/versioned records for submitted dispatch and receipt reports.
-- Backups and restore tests are a deployment responsibility; document the actual configuration.
+## Deliverables
+Add/adjust threat-model notes and automated tests for security boundaries and failure cases. Record issues that require professional review or external setup. Never claim a compliance certification from these checks.

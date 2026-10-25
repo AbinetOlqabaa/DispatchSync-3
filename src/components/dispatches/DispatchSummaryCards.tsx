@@ -75,36 +75,38 @@ export const DispatchSummaryCards: React.FC<DispatchSummaryCardsProps> = ({ disp
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {/* Card 1: Pending Deliveries */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-              <Truck className="w-4 h-4" />
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                <Truck className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-medium text-slate-400">Shipments Status</span>
+                <h3 className="text-sm font-bold text-white">Pending Deliveries</h3>
+              </div>
             </div>
-            <div>
-              <span className="text-xs font-medium text-slate-400">Shipments Status</span>
-              <h3 className="text-sm font-bold text-white">Pending Deliveries</h3>
-            </div>
-          </div>
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded-full">
-            <Clock className="w-3 h-3" /> Active
-          </span>
-        </div>
-
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="text-2xl font-extrabold text-white font-mono">
-            {pendingCount}{' '}
-            <span className="text-xs font-normal text-slate-400 font-sans">
-              manifests
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded-full">
+              <Clock className="w-3 h-3" /> Active
             </span>
           </div>
-          <div className="text-[11px] text-slate-400">7-day volume trend</div>
+
+          <div className="flex flex-wrap items-baseline justify-between gap-1 mb-2">
+            <div className="text-xl sm:text-2xl font-extrabold text-white font-mono">
+              {pendingCount}{' '}
+              <span className="text-xs font-normal text-slate-400 font-sans">
+                manifests
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400">7-day volume trend</div>
+          </div>
         </div>
 
         {/* Recharts Area Chart */}
-        <div className="h-14 w-full">
+        <div className="h-14 w-full mt-1">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={pendingTrendData}>
               <defs>
@@ -137,31 +139,33 @@ export const DispatchSummaryCards: React.FC<DispatchSummaryCardsProps> = ({ disp
       </div>
 
       {/* Card 2: Total Value in Transit */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <DollarSign className="w-4 h-4" />
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <DollarSign className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-medium text-slate-400">Cargo Exposure</span>
+                <h3 className="text-sm font-bold text-white">Total Value in Transit</h3>
+              </div>
             </div>
-            <div>
-              <span className="text-xs font-medium text-slate-400">Cargo Exposure</span>
-              <h3 className="text-sm font-bold text-white">Total Value in Transit</h3>
-            </div>
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">
+              <ArrowUpRight className="w-3 h-3" /> Insured
+            </span>
           </div>
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">
-            <ArrowUpRight className="w-3 h-3" /> Insured
-          </span>
-        </div>
 
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="text-2xl font-extrabold text-emerald-400 font-mono">
-            ${totalValueInTransit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="flex flex-wrap items-baseline justify-between gap-1 mb-2">
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono tracking-tight">
+              ${totalValueInTransit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-slate-400">Waybill valuation</div>
           </div>
-          <div className="text-[11px] text-slate-400">Waybill valuation</div>
         </div>
 
         {/* Recharts Bar Chart */}
-        <div className="h-14 w-full">
+        <div className="h-14 w-full mt-1">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={valueTrendData}>
               <Tooltip
@@ -181,30 +185,32 @@ export const DispatchSummaryCards: React.FC<DispatchSummaryCardsProps> = ({ disp
       </div>
 
       {/* Card 3: Completed Today */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-              <CheckCircle2 className="w-4 h-4" />
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-all flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-medium text-slate-400">Reconciliation Cycle</span>
+                <h3 className="text-sm font-bold text-white">Completed Today</h3>
+              </div>
             </div>
-            <div>
-              <span className="text-xs font-medium text-slate-400">Reconciliation Cycle</span>
-              <h3 className="text-sm font-bold text-white">Completed Today</h3>
-            </div>
-          </div>
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-purple-400 bg-purple-950/60 border border-purple-800 px-2 py-0.5 rounded-full">
-            <TrendingUp className="w-3 h-3" /> Reconciled
-          </span>
-        </div>
-
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="text-2xl font-extrabold text-purple-300 font-mono">
-            {completedCount}{' '}
-            <span className="text-xs font-normal text-slate-400 font-sans">
-              receipts signed
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-purple-400 bg-purple-950/60 border border-purple-800 px-2 py-0.5 rounded-full">
+              <TrendingUp className="w-3 h-3" /> Reconciled
             </span>
           </div>
-          <div className="text-[11px] text-slate-400">Clean dock handovers</div>
+
+          <div className="flex flex-wrap items-baseline justify-between gap-1 mb-2">
+            <div className="text-xl sm:text-2xl font-extrabold text-purple-300 font-mono">
+              {completedCount}{' '}
+              <span className="text-xs font-normal text-slate-400 font-sans">
+                receipts signed
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400">Clean dock handovers</div>
+          </div>
         </div>
 
         {/* Recharts Area Chart */}

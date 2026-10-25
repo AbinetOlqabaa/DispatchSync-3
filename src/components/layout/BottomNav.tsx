@@ -13,13 +13,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
   const { t } = useTranslation();
 
   const items = [
-    { id: 'dispatches', label: t('nav.dispatches'), icon: Truck },
-    ...(user ? [{ id: 'dashboard', label: t('nav.dashboard'), icon: Activity }] : []),
-    ...(user && user.role !== 'RECEIVER' ? [{ id: 'partners', label: t('nav.partners'), icon: Users }] : []),
+    { id: 'dispatches', label: t('nav.dispatches', 'Dispatches'), icon: Truck },
+    ...(user ? [{ id: 'dashboard', label: t('nav.dashboard', 'Dashboard'), icon: Activity }] : []),
+    ...(user && user.role !== 'RECEIVER' ? [{ id: 'partners', label: t('nav.partners', 'Partners'), icon: Users }] : []),
     ...(user && (user.role === 'SUPER_ADMIN' || user.role === 'BUSINESS_OWNER')
-      ? [{ id: 'audit', label: t('nav.audit'), icon: FileText }]
+      ? [{ id: 'audit', label: t('nav.audit', 'Audit'), icon: FileText }]
       : []),
-    { id: 'status', label: t('nav.systemStatus'), icon: Shield },
+    { id: 'status', label: t('nav.status', 'Status'), icon: Shield },
   ];
 
   return (

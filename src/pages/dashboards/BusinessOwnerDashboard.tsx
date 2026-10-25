@@ -10,6 +10,12 @@ import {
   ShieldAlert,
   BarChart3,
   Calendar,
+  Building2,
+  ChevronDown,
+  Check,
+  Plus,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { useTranslation } from '../../context/LanguageContext.js';
@@ -18,28 +24,46 @@ import { api } from '../../services/api.js';
 import { StatusBadge } from '../../components/common/StatusBadge.js';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.js';
 import { ExecutiveAnalyticsCharts } from '../../components/dashboards/ExecutiveAnalyticsCharts.js';
+import { ProfileSummaryCard } from '../../components/common/ProfileSummaryCard.js';
 
 interface BusinessOwnerDashboardProps {
   onSelectDispatch: (id: string) => void;
   onNavigateTab: (tab: string) => void;
   onCreateDispatch: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
   onSelectDispatch,
   onNavigateTab,
   onCreateDispatch,
+  onOpenProfile,
 }) => {
-  const { user } = useAuth();
+  const { user, switchBusiness, createBusiness } = useAuth();
   const { t } = useTranslation();
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Business context switcher state
+  const [showBusinessDropdown, setShowBusinessDropdown] = useState(false);
+  const [showCreateBizModal, setShowCreateBizModal] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [submittingBiz, setSubmittingBiz] = useState(false);
+  const [bizModalError, setBizModalError] = useState<string | null>(null);
+  const [bizForm, setBizForm] = useState({
+    name: '',
+    registrationNumber: '',
+    countryCode: 'US',
+    contactEmail: '',
+    contactPhone: '',
+    address: '',
+  });
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.businessId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -52,6 +76,33 @@ export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
       setError(err.message || 'Failed to load business overview.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateBusinessSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bizForm.name.trim() || !bizForm.contactEmail.trim() || !bizForm.contactPhone.trim() || !bizForm.address.trim()) {
+      setBizModalError('Entity Name, Contact Email, Phone, and Address are required.');
+      return;
+    }
+    setSubmittingBiz(true);
+    setBizModalError(null);
+    try {
+      await createBusiness(bizForm);
+      setShowCreateBizModal(false);
+      setBizForm({
+        name: '',
+        registrationNumber: '',
+        countryCode: 'US',
+        contactEmail: '',
+        contactPhone: '',
+        address: '',
+      });
+      await loadData();
+    } catch (err: any) {
+      setBizModalError(err.message || 'Failed to register business entity.');
+    } finally {
+      setSubmittingBiz(false);
     }
   };
 
@@ -88,19 +139,106 @@ export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Profile Summary Card */}
+      <ProfileSummaryCard onOpenProfile={onOpenProfile} />
+
       {/* Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
-        <div>
+        <div className="relative">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-800">
               {t('role.business_owner')}
             </span>
             <span className="text-xs text-slate-400">Company ID: {user?.businessId}</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">{user?.businessName}</h1>
+
+          <div className="flex items-center gap-2.5 mt-1">
+            <button
+              onClick={() => setShowBusinessDropdown(!showBusinessDropdown)}
+              className="flex items-center gap-2 text-left group cursor-pointer focus:outline-none"
+              title="Switch Business Entity"
+              aria-label="Switch Business Entity"
+            >
+              <Building2 className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+              <h1 className="text-2xl font-bold text-white tracking-tight group-hover:text-indigo-200 transition-colors">
+                {user?.businessName}
+              </h1>
+              <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-white transition-transform ${showBusinessDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {user?.memberships && user.memberships.length > 1 && (
+              <span className="text-[11px] font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 px-2 py-0.5 rounded-full">
+                {user.memberships.length} Entities
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-400 mt-0.5">
             {t('app.enterprise')}
           </p>
+
+          {/* Business Entity Switcher Popover */}
+          {showBusinessDropdown && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowBusinessDropdown(false)} />
+              <div className="absolute left-0 top-full mt-2 w-80 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-2 z-30">
+                <div className="px-3 py-2 border-b border-slate-800 text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Switch Business Entity</span>
+                  {isSwitching && <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />}
+                </div>
+                <div className="py-1 max-h-56 overflow-y-auto divide-y divide-slate-800/40 scrollbar-thin">
+                  {user?.memberships?.map((m) => {
+                    const isActive = m.businessId === user?.businessId;
+                    return (
+                      <button
+                        key={m.id}
+                        disabled={isSwitching}
+                        onClick={async () => {
+                          if (isActive) {
+                            setShowBusinessDropdown(false);
+                            return;
+                          }
+                          try {
+                            setIsSwitching(true);
+                            await switchBusiness(m.businessId);
+                            setShowBusinessDropdown(false);
+                          } catch (e: any) {
+                            setError(e.message || 'Failed to switch entity.');
+                          } finally {
+                            setIsSwitching(false);
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-indigo-950/60 text-indigo-200 border border-indigo-800/50'
+                            : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                        }`}
+                      >
+                        <div className="truncate mr-2">
+                          <div className="font-semibold truncate">{m.businessName}</div>
+                          <div className="text-[10px] text-slate-400">ID: {m.businessId} • {m.role}</div>
+                        </div>
+                        {isActive ? (
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="pt-2 border-t border-slate-800">
+                  <button
+                    onClick={() => {
+                      setShowBusinessDropdown(false);
+                      setShowCreateBizModal(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-300 hover:text-white hover:bg-indigo-900/40 border border-indigo-900/60 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Register New Business Entity</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -252,33 +390,33 @@ export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+        <div className="overflow-x-auto rounded-xl border border-slate-800/80 scrollbar-thin">
+          <table className="w-full text-left text-xs min-w-[760px] lg:min-w-full">
+            <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/40 border-b border-slate-800">
               <tr>
-                <th className="pb-3 font-semibold">Dispatch Number</th>
-                <th className="pb-3 font-semibold">Partner Destination</th>
-                <th className="pb-3 font-semibold">Status</th>
-                <th className="pb-3 font-semibold">Items</th>
-                <th className="pb-3 font-semibold">Reconciliation Outcome</th>
-                <th className="pb-3 font-semibold text-right">Action</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Dispatch Number</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Partner Destination</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Status</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Items</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold whitespace-nowrap">Reconciliation Outcome</th>
+                <th className="px-3 sm:px-3.5 py-3 font-semibold text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {dispatches.slice(0, 5).map((d) => (
                 <tr key={d.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3.5 font-mono font-semibold text-indigo-300">{d.dispatchNumber}</td>
-                  <td className="py-3.5 text-slate-200">
-                    <div>{d.partnerName}</div>
+                  <td className="px-3 py-3 font-mono font-semibold text-indigo-300 whitespace-nowrap">{d.dispatchNumber}</td>
+                  <td className="px-3 py-3 text-slate-200">
+                    <div className="font-medium">{d.partnerName}</div>
                     <div className="text-[11px] text-slate-500 truncate max-w-xs">{d.destinationSnapshot.address}</div>
                   </td>
-                  <td className="py-3.5">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <StatusBadge status={d.status} size="sm" />
                   </td>
-                  <td className="py-3.5 text-slate-300">
+                  <td className="px-3 py-3 text-slate-300 whitespace-nowrap">
                     {d.totalQuantityDispatched} {d.lines[0]?.unit || 'units'}
                   </td>
-                  <td className="py-3.5">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     {d.totalQuantityLost !== undefined ? (
                       d.totalQuantityLost > 0 ? (
                         <span className="text-rose-400 font-semibold flex items-center gap-1">
@@ -295,7 +433,7 @@ export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
                       <span className="text-slate-500">Pending Receipt</span>
                     )}
                   </td>
-                  <td className="py-3.5 text-right">
+                  <td className="px-3 py-3 text-right whitespace-nowrap">
                     <button
                       onClick={() => onSelectDispatch(d.id)}
                       className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
@@ -309,6 +447,152 @@ export const BusinessOwnerDashboard: React.FC<BusinessOwnerDashboardProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Register New Business Entity Modal */}
+      {showCreateBizModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <button
+              onClick={() => setShowCreateBizModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close modal"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-800/60 text-indigo-400">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Register New Business Entity</h3>
+                <p className="text-xs text-slate-400">Add an operating entity under your multi-tenant account</p>
+              </div>
+            </div>
+
+            {bizModalError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{bizModalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateBusinessSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Business Legal Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Great Lakes Cold Freight Ltd."
+                  value={bizForm.name}
+                  onChange={(e) => setBizForm({ ...bizForm, name: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Registration / Tax ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. REG-88421-US"
+                    value={bizForm.registrationNumber}
+                    onChange={(e) => setBizForm({ ...bizForm, registrationNumber: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Country Code
+                  </label>
+                  <input
+                    type="text"
+                    value={bizForm.countryCode}
+                    onChange={(e) => setBizForm({ ...bizForm, countryCode: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors uppercase font-mono"
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Contact Email <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="ops@company.com"
+                    value={bizForm.contactEmail}
+                    onChange={(e) => setBizForm({ ...bizForm, contactEmail: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Dispatch Phone <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="+1-555-019-0000"
+                    value={bizForm.contactPhone}
+                    onChange={(e) => setBizForm({ ...bizForm, contactPhone: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Operating Headquarters Address <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="e.g. 500 Industrial Parkway, Dock 1, Milwaukee, WI 53202"
+                  value={bizForm.address}
+                  onChange={(e) => setBizForm({ ...bizForm, address: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateBizModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingBiz}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {submittingBiz ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Registering...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Register & Activate</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

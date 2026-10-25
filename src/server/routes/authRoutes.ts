@@ -5,23 +5,93 @@ import { getBootstrapStatus } from '../security.js';
 
 const router = Router();
 
-// Login
+// Login (Email or Mobile Number)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required.' });
+    const { email, phoneNumber, identifier, password } = req.body;
+    const userIdentifier = identifier || email || phoneNumber;
+
+    if (!userIdentifier || !password) {
+      res.status(400).json({ error: 'Mobile number or email, and password are required.' });
       return;
     }
 
-    const session = await sandboxStore.login(email, password);
+    const session = await sandboxStore.login(userIdentifier, password);
     res.json(session);
   } catch (err: any) {
     res.status(401).json({ error: err.message || 'Login failed.' });
   }
 });
 
-// Register
+// Dedicated Mobile Login
+router.post('/login-mobile', async (req, res) => {
+  try {
+    const { phoneNumber, password } = req.body;
+    if (!phoneNumber || !password) {
+      res.status(400).json({ error: 'Mobile number and password are required.' });
+      return;
+    }
+
+    const session = await sandboxStore.loginWithMobile(phoneNumber, password);
+    res.json(session);
+  } catch (err: any) {
+    res.status(401).json({ error: err.message || 'Mobile login failed.' });
+  }
+});
+
+// Step 1: Initiate Registration with Fayda e-ID Verification & OTP Challenge
+router.post('/register/initiate', async (req, res) => {
+  try {
+    const { role, name, phoneNumber, countryDialCode, fan, fin, businessName, password, email, partnerId } = req.body;
+
+    if (!role || !name || !phoneNumber || !fan || !fin || !businessName || !password) {
+      res.status(400).json({
+        error: 'Missing required registration parameters: role, name, phoneNumber, fan, fin, businessName, and password are required.',
+      });
+      return;
+    }
+
+    if (role === 'SUPER_ADMIN') {
+      res.status(400).json({ error: 'Public registration as Super Administrator is strictly prohibited.' });
+      return;
+    }
+
+    const challenge = await sandboxStore.initiateRegistration({
+      role,
+      name,
+      phoneNumber,
+      countryDialCode,
+      fan,
+      fin,
+      businessName,
+      password,
+      email,
+      partnerId,
+    });
+
+    res.json(challenge);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Registration initiation failed.' });
+  }
+});
+
+// Step 2: Complete Registration with OTP Code
+router.post('/register/complete', async (req, res) => {
+  try {
+    const { challengeId, otpCode } = req.body;
+    if (!challengeId || !otpCode) {
+      res.status(400).json({ error: 'challengeId and otpCode are required.' });
+      return;
+    }
+
+    const session = await sandboxStore.completeRegistration(challengeId, otpCode);
+    res.status(201).json(session);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Registration completion failed.' });
+  }
+});
+
+// Legacy Register (Fallback for tests)
 router.post('/register', async (req, res) => {
   try {
     const { email, password, name, phoneNumber, businessName, role, partnerId } = req.body;
@@ -31,9 +101,8 @@ router.post('/register', async (req, res) => {
       return;
     }
 
-    const validRoles = ['BUSINESS_OWNER', 'SENDER', 'RECEIVER'];
-    if (!validRoles.includes(role)) {
-      res.status(400).json({ error: 'Public registration allows BUSINESS_OWNER, SENDER, or RECEIVER roles only.' });
+    if (role === 'SUPER_ADMIN') {
+      res.status(400).json({ error: 'Public registration as Super Administrator is strictly prohibited.' });
       return;
     }
 
@@ -53,12 +122,97 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// Password Reset Step 1: Initiate with Mobile + FAN + FIN verification
+router.post('/password-reset/initiate', async (req, res) => {
+  try {
+    const { phoneNumber, fan, fin, countryDialCode } = req.body;
+    if (!phoneNumber || !fan || !fin) {
+      res.status(400).json({ error: 'Mobile number, FAN, and FIN are required to initiate password recovery.' });
+      return;
+    }
+
+    const challenge = await sandboxStore.initiatePasswordReset(phoneNumber, fan, fin, countryDialCode);
+    res.json(challenge);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Identity verification failed.' });
+  }
+});
+
+// Password Reset Step 2: Complete Reset with OTP + New Password
+router.post('/password-reset/complete', async (req, res) => {
+  try {
+    const { challengeId, otpCode, newPassword } = req.body;
+    if (!challengeId || !otpCode || !newPassword) {
+      res.status(400).json({ error: 'challengeId, otpCode, and newPassword are required.' });
+      return;
+    }
+
+    const result = await sandboxStore.completePasswordReset(challengeId, otpCode, newPassword);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Password reset failed.' });
+  }
+});
+
+// Signed-In Password Change Step 1: Request Step-up OTP
+router.post('/password-change/initiate-otp', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const challenge = await sandboxStore.initiatePasswordChangeOtp(req.user!.id);
+    res.json(challenge);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to dispatch step-up OTP.' });
+  }
+});
+
+// Signed-In Password Change Step 2: Verify Step-up OTP and Update Password
+router.post('/password-change', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { currentPassword, newPassword, challengeId, otpCode } = req.body;
+    if (!currentPassword || !newPassword || !challengeId || !otpCode) {
+      res.status(400).json({ error: 'currentPassword, newPassword, challengeId, and otpCode are required.' });
+      return;
+    }
+
+    const result = await sandboxStore.changePassword(
+      req.user!.id,
+      currentPassword,
+      newPassword,
+      challengeId,
+      otpCode
+    );
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Password update failed.' });
+  }
+});
+
+// Profile Management: Update Profile (Name & Photo)
+router.put('/profile', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { name, avatarUrl } = req.body;
+    const updatedUser = await sandboxStore.updateProfile(req.user!.id, { name, avatarUrl });
+    res.json({ user: updatedUser });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to update profile.' });
+  }
+});
+
+// Profile Management: Remove Photo
+router.delete('/profile/photo', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const updatedUser = await sandboxStore.removeProfilePhoto(req.user!.id);
+    res.json({ user: updatedUser });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to remove profile photo.' });
+  }
+});
+
 // Current User Profile
 router.get('/me', authenticate, async (req: AuthenticatedRequest, res) => {
   res.json({ user: req.user });
 });
 
-// Password Reset Request
+// Password Reset Request (Legacy Email)
 router.post('/request-password-reset', async (req, res) => {
   try {
     const { email } = req.body;
@@ -74,7 +228,7 @@ router.post('/request-password-reset', async (req, res) => {
   }
 });
 
-// Reset Password
+// Reset Password (Legacy Email)
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -150,6 +304,28 @@ router.post('/switch-business', authenticate, async (req: AuthenticatedRequest, 
     res.json({ user: updatedUser });
   } catch (err: any) {
     res.status(403).json({ error: err.message || 'Failed to switch business.' });
+  }
+});
+
+// Create New Business Entity & Membership
+router.post('/create-business', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { name, registrationNumber, countryCode, contactEmail, contactPhone, address } = req.body;
+    if (!name || !contactEmail || !contactPhone || !address) {
+      res.status(400).json({ error: 'name, contactEmail, contactPhone, and address are required.' });
+      return;
+    }
+    const result = await sandboxStore.createBusiness(req.user!.id, {
+      name,
+      registrationNumber,
+      countryCode,
+      contactEmail,
+      contactPhone,
+      address,
+    });
+    res.status(201).json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Failed to create business entity.' });
   }
 });
 

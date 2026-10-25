@@ -1,36 +1,18 @@
-# Notifications, event handling and audit
+# Phase 5 — Notifications, Outbox and Audit
 
-## Notification channels
-Implement only channels that are actually configured. Typical adapters:
-- In-app notification inbox (baseline).
-- Email via a configured provider.
-- SMS via a configured provider.
-- Push notifications if supported by the chosen client platform and credentials.
-- WhatsApp only through an approved provider/API and properly authorized business account; do not automate consumer accounts or imply support without setup.
-
-## Events to notify
-- Dispatch submitted/shared.
-- Recipient viewed dispatch (optional sender notification).
-- Receipt report submitted.
-- Discrepancy opened, disputed, commented on, or resolved.
-- Dispatch cancelled or amended.
-- Invitation created/accepted/expired.
-- Account/security events and important administrator actions.
-
-## Reliability
-- Create domain event/notification records transactionally where feasible, then deliver through a server-side worker/queue or retryable function.
-- Use idempotency keys to avoid duplicate sends.
-- Track channel, status (queued/sending/sent/delivered/failed/unknown/read as applicable), provider ID, attempts, timestamps and safe error code.
-- Use exponential backoff with bounded retries and dead-letter/manual retry handling where available.
-- Never display “delivered” if the provider only accepted the request.
-- Do not block a successful dispatch transaction indefinitely because an external notification provider is down.
-- Store secrets in managed environment secrets, never client code.
-- Respect opt-in/consent and local communication laws; provide channel preferences and quiet hours if relevant.
+## Notifications
+- In-app notifications are the baseline. Provide inbox, unread/read state, preferences where appropriate, pagination, and retryable failures.
+- Email/SMS/push/WhatsApp must use explicit provider adapters and real configured credentials. If not configured, show “not configured” or “pending”; never report sent/delivered without provider evidence.
+- Use an outbox/retry strategy where supported, idempotency, bounded retry/backoff and safe error codes. Avoid duplicate messages.
+- Keep delivery status separate from dispatch view and receipt status.
 
 ## Audit
-Audit consequential actions: business/member changes, dispatch create/submit/amend/cancel, recipient view, receipt submission/correction, discrepancy resolution, admin actions, permission changes, export and security events.
-Each event should include actor, business context if any, action, entity, server timestamp, correlation ID, and minimal safe metadata.
-- Append-only from client access.
-- Do not log passwords, access tokens, reset links, sensitive attachments, or unnecessary personal data.
-- Restrict audit viewing and exports.
-- Ensure client users cannot write arbitrary audit entries or erase them.
+- Record consequential events: membership/invitation changes, dispatch create/submit/cancel, recipient view, receipt submission, discrepancy resolution, role/admin actions, exports, security-sensitive changes.
+- Audit entries are server-authored and append-only from client perspective. Include actor, active business if applicable, action, entity ID/type, server timestamp, correlation/request ID and minimal safe metadata.
+- Do not store passwords, tokens, private keys, full evidence blobs or unnecessary sensitive data in logs.
+- Restrict audit queries to authorized roles; paginate and filter.
+
+## Deliverables
+- Verify notification state is truthful and tied to actual adapter outcomes.
+- Add tests for outbox retry/idempotency, read state, authorization and audit append-only behavior.
+- Document external setup and update `.ai/BUILD_STATE.md`.

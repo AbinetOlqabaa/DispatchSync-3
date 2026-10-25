@@ -203,41 +203,44 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   const selectedLocation = locations.find((l) => l.id === selectedLocationId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 my-8 text-slate-100 max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 sm:p-6 text-slate-100 max-h-[92vh] flex flex-col">
+        {/* Pinned Modal Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+          {/* Stepper indicator */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                step === 'input'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span>1. Manifest Details</span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
+            <div
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+                step === 'review'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span>2. Pre-Submission Review</span>
+            </div>
+          </div>
 
-        {/* Stepper indicator */}
-        <div className="flex items-center gap-2 mb-4">
-          <div
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-              step === 'input'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-800 text-slate-400'
-            }`}
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Close"
           >
-            <span>1. Manifest Details</span>
-          </div>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-600" />
-          <div
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-              step === 'review'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-800 text-slate-400'
-            }`}
-          >
-            <span>2. Pre-Submission Review</span>
-          </div>
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+          <div className="my-3 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2 shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -245,8 +248,9 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
 
         {/* STEP 1: INPUT DETAILS */}
         {step === 'input' && (
-          <form onSubmit={handleGoToReview} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleGoToReview} className="flex-1 flex flex-col min-h-0 pt-3">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                   <Warehouse className="w-3.5 h-3.5 text-indigo-400" />
@@ -432,18 +436,19 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white"
               />
             </div>
+          </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 shrink-0 mt-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer min-h-[40px]"
               >
                 <span>Continue to Review</span>
                 <ArrowRight className="w-4 h-4" />
@@ -454,68 +459,70 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
 
         {/* STEP 2: PRE-SUBMISSION REVIEW */}
         {step === 'review' && (
-          <div className="space-y-4">
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileCheck className="w-4 h-4 text-emerald-400" />
-                Review Dispatch Summary
-              </h3>
+          <div className="flex-1 flex flex-col min-h-0 pt-3">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+              <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-400" />
+                  Review Dispatch Summary
+                </h3>
 
-              <div className="grid grid-cols-2 gap-3 text-slate-300">
-                <div>
-                  <span className="text-slate-500 font-semibold block">Origin Terminal:</span>
-                  <div className="font-semibold text-white">{selectedLocation?.label || 'Main Dock'}</div>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold block">Destination Partner:</span>
-                  <div className="font-semibold text-white">{selectedPartner?.name}</div>
-                  <div className="text-[11px] text-slate-400">{destinationAddress}</div>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold block">Carrier / Driver:</span>
-                  <div>{driverName || 'Unassigned'} ({vehicleReg || 'TRK'})</div>
-                  {driverPhone && <div className="text-[11px] text-slate-400">{driverPhone}</div>}
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold block">Total Manifest Quantity:</span>
-                  <div className="font-mono font-bold text-indigo-300 text-sm">
-                    {totalUnits} units across {lines.length} lines
+                <div className="grid grid-cols-2 gap-3 text-slate-300">
+                  <div>
+                    <span className="text-slate-500 font-semibold block">Origin Terminal:</span>
+                    <div className="font-semibold text-white">{selectedLocation?.label || 'Main Dock'}</div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Line items preview table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-              <div className="text-xs font-bold text-white mb-2">Item Breakdown</div>
-              <div className="divide-y divide-slate-800 text-xs">
-                {lines.map((l, i) => (
-                  <div key={i} className="py-2 flex items-center justify-between">
-                    <div>
-                      <span className="font-mono text-indigo-300 mr-2 text-[11px]">{l.sku}</span>
-                      <span className="text-slate-200">{l.itemName}</span>
-                    </div>
-                    <div className="font-mono font-bold text-slate-200">
-                      {l.quantitySent} {l.unit}
+                  <div>
+                    <span className="text-slate-500 font-semibold block">Destination Partner:</span>
+                    <div className="font-semibold text-white">{selectedPartner?.name}</div>
+                    <div className="text-[11px] text-slate-400">{destinationAddress}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-semibold block">Carrier / Driver:</span>
+                    <div>{driverName || 'Unassigned'} ({vehicleReg || 'TRK'})</div>
+                    {driverPhone && <div className="text-[11px] text-slate-400">{driverPhone}</div>}
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-semibold block">Total Manifest Quantity:</span>
+                    <div className="font-mono font-bold text-indigo-300 text-sm">
+                      {totalUnits} units across {lines.length} lines
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
+
+              {/* Line items preview table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <div className="text-xs font-bold text-white mb-2">Item Breakdown</div>
+                <div className="divide-y divide-slate-800 text-xs">
+                  {lines.map((l, i) => (
+                    <div key={i} className="py-2 flex items-center justify-between">
+                      <div>
+                        <span className="font-mono text-indigo-300 mr-2 text-[11px]">{l.sku}</span>
+                        <span className="text-slate-200">{l.itemName}</span>
+                      </div>
+                      <div className="font-mono font-bold text-slate-200">
+                        {l.quantitySent} {l.unit}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {notes && (
+                <div className="bg-slate-800/30 p-2.5 rounded-lg border border-slate-800 text-xs text-slate-300">
+                  <span className="text-slate-500 font-semibold block">Notes:</span>
+                  {notes}
+                </div>
+              )}
             </div>
 
-            {notes && (
-              <div className="bg-slate-800/30 p-2.5 rounded-lg border border-slate-800 text-xs text-slate-300">
-                <span className="text-slate-500 font-semibold block">Notes:</span>
-                {notes}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800 shrink-0 mt-3">
               <button
                 type="button"
                 onClick={() => setStep('input')}
                 disabled={isLoading}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer min-h-[40px]"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Edit</span>
@@ -525,7 +532,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                 type="button"
                 onClick={handleCommitSubmit}
                 disabled={isLoading}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 cursor-pointer min-h-[40px]"
               >
                 {isLoading ? (
                   <span>Generating Manifest...</span>
